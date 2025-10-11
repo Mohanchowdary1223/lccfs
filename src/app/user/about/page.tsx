@@ -1,6 +1,6 @@
 'use client'
 
-import { Navbar } from '@/components/navbar'
+import {UserNavbar} from '@/components/user-navbar'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,7 +42,7 @@ export default function HomePage() {
 
   return (
     <>
-      <Navbar />
+     
       
       {/* Hero Section - Full Height */}
       <div className="h-screen flex items-center justify-center">
@@ -88,11 +88,7 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8, duration: 0.8 }}
             >
-              <Link href="/auth/login">
-                <Button size="lg" className="text-lg px-8 py-4 cursor-pointer">
-                  Get Started
-                </Button>
-              </Link>
+            
             </motion.div>
           </motion.div>
         </div>
@@ -371,36 +367,7 @@ export default function HomePage() {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <Card className="p-8 bg-primary/5 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-2xl md:text-3xl mb-4">Ready to Ensure Legal Compliance?</CardTitle>
-              <CardDescription className="text-lg mb-6">
-                Join thousands of startups using our AI-powered legal compliance chatbot to stay protected and compliant.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href="/auth/login">
-<Button 
-  size="lg" 
-  className="
-    text-sm sm:text-base md:text-lg 
-    px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-4
-    min-h-[48px] sm:min-h-[52px]
-    w-full sm:w-auto
-    max-w-[280px] sm:max-w-none
-    whitespace-normal
-    leading-tight
-    text-center
-    cursor-pointer
-  "
->
-  Start Your Free Legal Consultation
-</Button>
-
-
-              </Link>
-            </CardContent>
-          </Card>
+          
         </motion.section>
       </div>
 

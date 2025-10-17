@@ -54,7 +54,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-16">
+<div className="min-h-screen flex items-center justify-center px-4">
       {/* Circular Back Button */}
       <Button
         variant="ghost"
@@ -65,7 +65,7 @@ export default function RegisterPage() {
         <ArrowLeft className="h-4 w-4" />
       </Button>
 
-      <div className="max-w-md mx-auto">
+      <div className="min-w-sm mx-auto">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create Account</CardTitle>

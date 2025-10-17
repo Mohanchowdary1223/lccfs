@@ -1,9 +1,6 @@
-/* eslint-disable prefer-const */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "framer-motion"
@@ -13,7 +10,19 @@ import { ChatInput } from "@/components/chatbot/ChatInput"
 import { EmptyState } from "@/components/chatbot/EmptyState"
 import { ShareButton } from "@/components/chatbot/ShareButton"
 import { Message, ChatSession } from "@/components/chatbot/types"
+import { useToast } from '@/components/ui/toast'
 import { getUserIdFromLocalStorage } from "@/components/chatbot/utils"
+import { CheckCircle } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 const LegalComplianceChatBotContent: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
@@ -24,32 +33,28 @@ const LegalComplianceChatBotContent: React.FC = () => {
   const [pageDragActive, setPageDragActive] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
+  // uploadedFile may be local (file present) or already uploaded (id present)
+  const [uploadedFile, setUploadedFile] = useState<{ id?: string; file?: File; name: string } | null>(null)
+  const toast = useToast()
+  const [, setIsFileReading] = useState(false)
+
   const { open, openMobile, isMobile, setOpen, setOpenMobile } = useSidebar()
-  const router = useRouter()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const chatInputRef = useRef<any>(null)
+  const chatInputRef = useRef<{ addExternalFile?: (f: File) => void } | null>(null)
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }
+  const scrollToBottom = () => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" }) }
+  useEffect(() => { scrollToBottom() }, [currentChat?.messages])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [currentChat?.messages])
+  // keep a ref to the currentChat so event handlers can access latest value
+  const currentChatRef = useRef<ChatSession | null>(null)
+  useEffect(() => { currentChatRef.current = currentChat }, [currentChat])
 
-  // Fetch chat history on mount
   useEffect(() => {
     const id = getUserIdFromLocalStorage();
     setUserId(id);
-    if (!id) {
-      setChatHistory([]);
-      setCurrentChat(null);
-      return;
-    }
+    if (!id) { setChatHistory([]); setCurrentChat(null); return; }
     let continueChatId: string | null = null;
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -57,26 +62,26 @@ const LegalComplianceChatBotContent: React.FC = () => {
     }
     const fetchHistoryAndMaybeContinue = async () => {
       try {
-        const res = await fetch("/api/legalbot", {
-          headers: { "x-user-id": id },
-        });
+        const res = await fetch("/api/legalbot", { headers: { "x-user-id": id } });
         const data = await res.json();
-        const uniqueHistory = (data.history || []).filter((chat: any, idx: number, arr: any[]) =>
-          arr.findIndex((c) => c._id === chat._id) === idx
-        );
+          const historyArr = (data.history || []) as ChatSession[];
+        const uniqueHistory = historyArr.filter((chat, idx, arr) => arr.findIndex(c => c._id === chat._id) === idx)
         setChatHistory(uniqueHistory);
 
+        // If a chat is currently open, update it with the fresh version from the server
+        if (currentChatRef.current && currentChatRef.current._id) {
+          const updated = uniqueHistory.find(c => c._id === currentChatRef.current!._id)
+          if (updated) setCurrentChat(updated)
+        }
+
         if (continueChatId) {
-          const userCopy = uniqueHistory.find((c: any) => c.originalSharedId === continueChatId);
-          if (userCopy) {
-            setCurrentChat(userCopy);
-            return;
-          }
-          const found = uniqueHistory.find((c: any) => c._id === continueChatId);
-          if (found) {
-            setCurrentChat(found);
-            return;
-          }
+              const userCopy = uniqueHistory.find((c: ChatSession) => {
+                  const maybe = c as unknown as Record<string, unknown>;
+                  return typeof maybe['originalSharedId'] === 'string' && maybe['originalSharedId'] === continueChatId;
+              });
+          if (userCopy) { setCurrentChat(userCopy); return; }
+            const found = uniqueHistory.find((c: ChatSession) => c._id === continueChatId);
+          if (found) { setCurrentChat(found); return; }
           const sharedRes = await fetch(`/api/legalbot?id=${continueChatId}&shared=1`);
           const sharedData = await sharedRes.json();
           if (sharedData.chat) {
@@ -98,151 +103,243 @@ const LegalComplianceChatBotContent: React.FC = () => {
             } else {
               setCurrentChat(sharedData.chat);
             }
-          } else {
-            setCurrentChat(null);
-          }
-        } else {
+          } else { setCurrentChat(null); }
+        } else { setCurrentChat(null); }
+        return uniqueHistory
+      } catch {
+          console.error("Failed to fetch chat history")
           setCurrentChat(null);
+          return [] as ChatSession[]
         }
-      } catch (error) {
-        console.error("Failed to fetch chat history:", error);
-        setCurrentChat(null);
-      }
     };
     fetchHistoryAndMaybeContinue();
+
+    // If another page performed a bulk files-clear and redirected here, it may have set localStorage marker.
+    (async () => {
+      try {
+        const marker = localStorage.getItem('files-cleared')
+        if (marker) {
+          // fetch fresh history, then mark messages on the active chat
+          const fresh = (await fetchHistoryAndMaybeContinue()) || []
+          try {
+            setCurrentChat(prev => {
+              // try to find the matching chat from fresh history using previous currentChat id if available
+              const currentId = prev?._id
+              let source = prev
+              if (currentId) {
+                const found = fresh.find(c => c._id === currentId)
+                if (found) source = found
+              }
+              if (!source) return prev
+              const nextMsgs = (source.messages || []).map(m => (m.fileId || m.fileName) ? { ...m, fileDeleted: true } : m)
+              return { ...source, messages: nextMsgs }
+            })
+          } catch {}
+          try { localStorage.removeItem('files-cleared') } catch {}
+        }
+      } catch {
+        // ignore
+      }
+    })()
+
+    // Listen for file deletion events from other parts of the app (storage and custom event)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'file-deleted') {
+        fetchHistoryAndMaybeContinue()
+      }
+    }
+    const onFileDeleted = () => {
+      fetchHistoryAndMaybeContinue()
+    }
+    const onFilesCleared = () => {
+      // when ActivityTab clears all files, refresh history so message file states update
+      fetchHistoryAndMaybeContinue()
+      // Also mark existing messages in currentChat as deleted if they referenced a file
+      try {
+        setCurrentChat(prev => {
+          if (!prev) return prev
+          const nextMsgs = (prev.messages || []).map(m => (m.fileId || m.fileName) ? { ...m, fileDeleted: true } : m)
+          return { ...prev, messages: nextMsgs }
+        })
+      } catch {
+        // swallow
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('file-deleted', onFileDeleted)
+    window.addEventListener('files-cleared', onFilesCleared)
+    window.addEventListener('history-cleared', () => {
+      // refresh history and current chat
+      fetchHistoryAndMaybeContinue()
+    })
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('file-deleted', onFileDeleted)
+      window.removeEventListener('files-cleared', onFilesCleared)
+    }
   }, []);
 
-  // GLOBAL drag and drop handlers
-  const handlePageDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setPageDragActive(true)
-  }
-  const handlePageDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setPageDragActive(false)
-  }
+  // Drag & drop support
+  const handlePageDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setPageDragActive(true) }
+  const handlePageDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setPageDragActive(false) }
   const handlePageDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setPageDragActive(false)
+    e.preventDefault(); setPageDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0]
-      if (
-        ["pdf", "jpg", "jpeg", "png", "doc", "docx"].includes(file.name.split('.').pop()?.toLowerCase() || "")
-      ) {
-        if (chatInputRef.current && chatInputRef.current.addExternalFile) {
-          chatInputRef.current.addExternalFile(file)
-        }
+      const file = e.dataTransfer.files[0];
+      if (["pdf", "jpg", "jpeg", "png", "doc", "docx"].includes(file.name.split('.').pop()?.toLowerCase() || "")) {
+        if (chatInputRef.current && chatInputRef.current.addExternalFile) chatInputRef.current.addExternalFile(file);
       } else {
         alert("Please select a PDF, DOC/DOCX, or image file.")
       }
     }
   }
 
-  // Share/Sidebar/message handlers (unchanged)...
+  // Share/Sidebar/message handlers...
 
   const generateShareLink = (chat: ChatSession) => {
     if (!chat._id) return window.location.origin
     return `${window.location.origin}/shared-chat/${chat._id}`
   }
-
   const generateShareContent = (chat: ChatSession) => {
-    const title = chat.title
-    const messageCount = chat.messages?.length || 0
-    const link = generateShareLink(chat)
+    const title = chat.title; const messageCount = chat.messages?.length || 0; const link = generateShareLink(chat)
     return `Check out this legal compliance conversation: "${title}" - ${messageCount} messages about startup legal matters.\n\nView the chat: ${link}`
   }
-
   const handleWhatsAppShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
     window.open(whatsappUrl, '_blank')
   }
-
   const handleEmailShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
     const subject = `Legal Compliance Chat: ${chat.title}`
     const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shareText)}`
     window.location.href = emailUrl
   }
-
   const handleInstagramShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
     navigator.clipboard.writeText(shareText).then(() => {
       alert('Content copied! You can now paste it on Instagram.')
     })
   }
-
   const handleCopyLink = (chat: ChatSession) => {
     const link = generateShareLink(chat)
     navigator.clipboard.writeText(link)
   }
 
+  // Main SEND LOGIC now supports fileId
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !userId) return;
-    setLoading(true);
-    const tempTypingId = `temp-${Date.now()}`;
+    if ((!inputMessage.trim() && !uploadedFile) || !userId) return
+    setLoading(true)
+    
+    // Set file reading state if there's a file
+    if (uploadedFile) {
+      setIsFileReading(true)
+    }
+    
+    const tempTypingId = `temp-${Date.now()}`
     const tempTypingMsg: Message = {
       id: tempTypingId,
-      text: "Analyzing your legal query...",
+      text: uploadedFile ? "Reading and analyzing your file..." : "Analyzing your legal query...",
       sender: "bot",
       timestamp: new Date(),
       isTyping: true,
-    };
+      isFileReading: uploadedFile ? true : false,
+    }
     const userMsg: Message = {
       id: Date.now().toString(),
-      text: inputMessage,
+      text: inputMessage || (uploadedFile ? `Analyze this file: ${uploadedFile.name}` : ""),
       sender: "user",
       timestamp: new Date(),
-    };
+      fileId: uploadedFile?.id,
+      fileName: uploadedFile?.name,
+    }
+
     if (currentChat) {
       setCurrentChat({
         ...currentChat,
         messages: [...currentChat.messages, userMsg, tempTypingMsg],
-      });
+      })
     } else {
       setCurrentChat({
         title: inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "…" : ""),
         messages: [userMsg, tempTypingMsg],
         createdAt: new Date(),
-      });
+      })
     }
-    setInputMessage("");
+    setInputMessage("")
     try {
-      const chatId = currentChat?._id;
-      const title = currentChat?.title || inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "…" : "");
+      // If there's a local file (not yet uploaded), upload it first
+      let fileIdToSend = uploadedFile?.id
+      if (uploadedFile?.file && !uploadedFile.id) {
+        try {
+          const fd = new FormData()
+          fd.append('file', uploadedFile.file)
+          fd.append('userId', userId)
+          const uploadRes = await fetch('/api/legalbot/upload', { method: 'POST', body: fd })
+          const uploadData = await uploadRes.json()
+          if (!uploadRes.ok || !uploadData.fileId) {
+            throw new Error(uploadData.error || 'Upload failed')
+          }
+          fileIdToSend = uploadData.fileId
+          // update uploadedFile id so preview/other logic uses it
+          setUploadedFile({ id: uploadData.fileId, name: uploadData.originalFileName || uploadedFile.name })
+        } catch (err) {
+          console.error('Upload error', err)
+          toast.push('Failed to upload file. Please try again.', 'error')
+          setLoading(false)
+          return
+        }
+      }
+
+      const chatId = currentChat?._id
       const res = await fetch("/api/legalbot", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": userId },
-        body: JSON.stringify({ chatId, message: inputMessage, title }),
-      });
-      const data = await res.json();
+        body: JSON.stringify({
+          chatId,
+          message: inputMessage,
+          title: currentChat?.title || (inputMessage || uploadedFile?.name || "New Chat").slice(0, 30) + ((inputMessage || uploadedFile?.name || "").length > 30 ? "…" : ""),
+          fileId: fileIdToSend,
+          fileName: uploadedFile?.name,
+        }),
+      })
+      const data = await res.json()
       if (data.chat?.messages) {
-        const updatedMessages = data.chat.messages.filter((msg: Message) => msg.id !== tempTypingId);
-        const latestMessage = updatedMessages[updatedMessages.length - 1];
-        if (latestMessage?.sender === 'bot') setTypingMessageId(latestMessage.id);
-        data.chat.messages = updatedMessages;
+        const updatedMessages = data.chat.messages.filter((msg: Message) => msg.id !== tempTypingId)
+        const latestMessage = updatedMessages[updatedMessages.length - 1]
+        if (latestMessage?.sender === 'bot') setTypingMessageId(latestMessage.id)
+        data.chat.messages = updatedMessages
       }
+  setUploadedFile(null) // Clear file after sending
+      setIsFileReading(false) // Clear file reading state
       if (chatId) {
-        setChatHistory((prev) => prev.map((c) => (c._id === chatId ? data.chat : c)));
-        setCurrentChat(data.chat);
+        setChatHistory((prev) => prev.map((c) => (c._id === chatId ? data.chat : c)))
+        setCurrentChat(data.chat)
       } else {
-        setChatHistory((prev) => [data.chat, ...prev]);
-        setCurrentChat(data.chat);
+        setChatHistory((prev) => [data.chat, ...prev])
+        setCurrentChat(data.chat)
       }
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch {
       if (currentChat) setCurrentChat({
         ...currentChat,
         messages: currentChat.messages.filter((msg) => msg.id !== tempTypingId),
       })
+      setIsFileReading(false) // Clear file reading state on error too
     } finally { setLoading(false) }
-  };
+  }
 
+  // --- File Upload Handler ---
+  const handleFileUpload = async (file: File) => {
+    // Store locally until user clicks Send; do not change UI
+    setUploadedFile({ file, name: file.name })
+  }
+
+  // --- EDIT USER MESSAGE ---
   const handleEditUserMessage = async (msgId: string, newText: string) => {
     if (!currentChat || !userId) return
     const messages = currentChat.messages.map((m) => m.id === msgId ? { ...m, text: newText } : m)
     const idx = messages.findIndex((m) => m.id === msgId)
-    let nextBotIdx = idx + 1
+  const nextBotIdx = idx + 1
     let filtered = messages
     if (filtered[nextBotIdx] && filtered[nextBotIdx].sender === "bot") {
       filtered = filtered.filter((_, i) => i !== nextBotIdx)
@@ -279,53 +376,22 @@ const LegalComplianceChatBotContent: React.FC = () => {
           prev ? { ...prev, messages: updatedMsgs } : null
         )
       }
-    } catch (e) {}
-    setTypingMessageId(null)
+  } catch {
   }
-
-  const handleFileUpload = async (file: File) => {
-    if (!userId) return;
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', userId);
-      const res = await fetch('/api/legalbot/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      const fileMsg: Message = {
-        id: Date.now().toString(),
-        text: `Uploaded file: ${file.name}`,
-        sender: 'user',
-        timestamp: new Date(),
-      };
-      if (currentChat) {
-        setCurrentChat({ ...currentChat, messages: [...currentChat.messages, fileMsg] });
-      } else {
-        setCurrentChat({
-          title: file.name,
-          messages: [fileMsg],
-          createdAt: new Date(),
-        });
-      }
-    } catch (error) {
-      alert('Failed to upload file.');
-    } finally {
-      setLoading(false);
-    }
+    setTypingMessageId(null)
   }
 
   const handleNewChat = () => {
     setCurrentChat(null)
     setTypingMessageId(null)
+    setUploadedFile(null)
     if (isMobile) setOpenMobile(false)
     else setOpen(false)
   }
   const handleContinueChat = (chat: ChatSession) => {
     setCurrentChat(chat)
     setTypingMessageId(null)
+    setUploadedFile(null)
     if (isMobile) setOpenMobile(false)
     else setOpen(false)
   }
@@ -340,8 +406,35 @@ const LegalComplianceChatBotContent: React.FC = () => {
       }
       setShowDeleteSuccess(true)
       setTimeout(() => setShowDeleteSuccess(false), 3000)
-    } catch (error) { console.error("Failed to delete chat:", error) }
+    } catch {}
   }
+
+  const deleteAllChats = async () => {
+    // now handled via confirmation dialog
+    if (!userId) return
+    setDeleteAllOpen(true)
+  }
+
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
+  const performDeleteAllChats = async () => {
+    setDeleteAllOpen(false)
+    if (!userId) return
+    try {
+      const res = await fetch('/api/legalbot/clear?scope=chats', { method: 'POST', headers: { 'x-user-id': userId } })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setChatHistory([])
+        setCurrentChat(null)
+        toast.push('All chats deleted', 'success', <CheckCircle className="w-5 h-5 text-white" />)
+        window.dispatchEvent(new CustomEvent('history-cleared'))
+      }
+    } catch (err) {
+      console.error('Failed to delete all chats', err)
+      toast.push('Failed to delete chats', 'error')
+    }
+  }
+
+  // file-only deletion is handled from ActivityTab (Files button)
 
   return (
     <TooltipProvider>
@@ -352,19 +445,21 @@ const LegalComplianceChatBotContent: React.FC = () => {
         onDragLeave={handlePageDragLeave}
         onDrop={handlePageDrop}
       >
-        <AnimatePresence>
-          {showDeleteSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: -50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -50, scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="fixed top-20 right-4 z-[60] rounded-md bg-green-500 px-4 py-2 text-white shadow-lg"
-            >
-              Chat deleted successfully!
-            </motion.div>
-          )}
-        </AnimatePresence>
+<AnimatePresence>
+  {showDeleteSuccess && (
+    <motion.div
+      initial={{ opacity: 0, y: -50, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -50, scale: 0.9 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      className="fixed top-20 right-4 z-[60] rounded-md bg-green-500 px-4 py-2 text-white shadow-lg flex items-center gap-2"
+    >
+      <CheckCircle className="w-5 h-5 text-white" />
+      <span>Chat deleted successfully!</span>
+    </motion.div>
+  )}
+</AnimatePresence>
+
         <ShareButton
           currentChat={currentChat}
           onShareWhatsApp={() => currentChat && handleWhatsAppShare(currentChat)}
@@ -372,21 +467,6 @@ const LegalComplianceChatBotContent: React.FC = () => {
           onShareInstagram={() => currentChat && handleInstagramShare(currentChat)}
           onCopyLink={() => currentChat && handleCopyLink(currentChat)}
         />
-        {isMobile && !openMobile && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="fixed top-20 left-4 z-[60]"
-          >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <SidebarTrigger className="h-10 w-10 cursor-pointer border bg-background shadow-md" />
-            </motion.div>
-          </motion.div>
-        )}
         <ChatSidebar
           chatHistory={chatHistory}
           onNewChat={handleNewChat}
@@ -396,17 +476,43 @@ const LegalComplianceChatBotContent: React.FC = () => {
           onShareEmail={handleEmailShare}
           onShareInstagram={handleInstagramShare}
           onCopyLink={handleCopyLink}
+          onDeleteAll={deleteAllChats}
         />
-        <motion.div 
+        {/* Delete all confirmation dialog from sidebar */}
+        <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all chats</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all your chat history. This action cannot be undone. Are you sure?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteAllOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={performDeleteAllChats} className="ml-2">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="fixed top-16 bottom-0 right-0 z-40 flex flex-col border-l bg-background"
-          style={{ 
+          className="fixed top-16 bottom-0 right-0 z-40 flex flex-col bg-background"
+          style={{
             left: isMobile ? (openMobile ? '280px' : '0') : (open ? '280px' : '64px'),
-            transition: 'left 0.2s ease-in-out'
+            transition: 'left 0.2s ease-in-out',
+            borderLeft: isMobile ? 'none' : open ? '1px solid hsl(var(--border))' : '1px solid hsl(var(--border))'
           }}
         >
+          {/* Mobile Sidebar Trigger */}
+          {isMobile && !openMobile && (
+            <div className="absolute top-4 left-4 z-50">
+              <SidebarTrigger 
+                className="md:hidden bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg rounded-md p-2"
+                aria-label="Open sidebar"
+              />
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
             <div className="flex flex-col items-center w-full px-2 sm:px-4 h-full">
               {currentChat ? (
@@ -418,7 +524,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
                         index={index}
                         typingMessageId={typingMessageId}
                         onTypingComplete={() => setTypingMessageId(null)}
-                        onEdit={handleEditUserMessage}
+                        onEdit={handleEditUserMessage}      // ← THIS FIXES IT!
                       />
                     </div>
                   ))}
@@ -429,17 +535,18 @@ const LegalComplianceChatBotContent: React.FC = () => {
               )}
             </div>
           </div>
-         <ChatInput
-  ref={chatInputRef}
-  inputMessage={inputMessage}
-  loading={loading}
-  dragActive={pageDragActive}
-  onInputChange={setInputMessage}
-  onSendMessage={sendMessage}
-  onFileUpload={handleFileUpload}
-  locked={!!typingMessageId || loading}
-/>
-
+          <ChatInput
+            ref={chatInputRef}
+            inputMessage={inputMessage}
+            loading={loading}
+            dragActive={pageDragActive}
+            onInputChange={setInputMessage}
+            onSendMessage={sendMessage}
+            onFileUpload={handleFileUpload}
+            locked={!!typingMessageId || loading}
+            uploadedFile={uploadedFile}
+            onRemoveFile={() => setUploadedFile(null)}
+          />
         </motion.div>
       </div>
     </TooltipProvider>

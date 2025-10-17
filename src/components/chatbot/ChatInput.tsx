@@ -10,9 +10,11 @@ interface ChatInputProps {
   loading: boolean
   dragActive: boolean   // "global" drag state from page
   locked?: boolean      // <--- disables all input/UI while bot typing
+  uploadedFile: { id?: string; file?: File; name: string } | null
   onInputChange: (value: string) => void
   onSendMessage: () => void
   onFileUpload: (file: File) => void
+  onRemoveFile: () => void
 }
 
 export const ChatInput = forwardRef<any, ChatInputProps>(({
@@ -20,22 +22,23 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
   loading,
   dragActive,
   locked,
+  uploadedFile,
   onInputChange,
   onSendMessage,
   onFileUpload,
+  onRemoveFile,
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const fileInputPdf = useRef<HTMLInputElement>(null)
   const fileInputImage = useRef<HTMLInputElement>(null)
   const fileInputDoc = useRef<HTMLInputElement>(null)
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [dragOverInput, setDragOverInput] = useState(false)
 
   // Allow parent to add files from global page drop
   useImperativeHandle(ref, () => ({
     addExternalFile: (file: File) => {
-      setAttachedFiles(files => [...files, file])
+      onFileUpload(file)
     }
   }))
 
@@ -58,10 +61,6 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
   }
   const onSend = () => {
     if (locked) return
-    if (attachedFiles.length) {
-      attachedFiles.forEach(f => onFileUpload(f))
-      setAttachedFiles([])
-    }
     onSendMessage()
   }
 
@@ -82,16 +81,12 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
   ) => {
     const file = e.target.files?.[0]
     if (file && validateFile(file, acceptTypes)) {
-      setAttachedFiles(files => [...files, file])
+      onFileUpload(file)
       setModalOpen(false)
     } else if (file) {
       alert("Please select a valid file type.")
     }
     e.target.value = ""
-  }
-  const removeFile = (idx: number) => {
-    if (locked) return
-    setAttachedFiles(files => files.filter((_, i) => i !== idx))
   }
 
   // Drag/Drop on textarea itself
@@ -113,9 +108,31 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
       if (
         ["pdf", "jpg", "jpeg", "png", "doc", "docx"].includes(ext || "")
       ) {
-        setAttachedFiles(files => [...files, file])
+        onFileUpload(file)
       } else {
         alert("Please select a PDF, DOC/DOCX, or image file.")
+      }
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (locked) return
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]
+      if (it.kind === 'file') {
+        const file = it.getAsFile()
+        if (file) {
+          const ext = file.name.split('.').pop()?.toLowerCase()
+          if (["pdf", "jpg", "jpeg", "png", "doc", "docx"].includes(ext || "")) {
+            onFileUpload(file)
+            e.preventDefault()
+            return
+          } else {
+            alert("Please select a PDF, DOC/DOCX, or image file.")
+          }
+        }
       }
     }
   }
@@ -136,26 +153,20 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
           onDrop={handleDrop}
         >
           {/* File chips */}
-          {attachedFiles.length > 0 && (
+          {uploadedFile && (
             <div className="flex flex-wrap gap-2 mb-1">
-              {attachedFiles.map((f, i) => (
-                <div key={i}
-                  className="flex items-center bg-secondary pr-2 pl-2 py-1 rounded text-xs font-medium mr-1 mb-1
-                  border shadow-sm max-w-[180px] overflow-hidden">
-                  {f.type.startsWith("image")
-                    ? <FileImage className="w-4 h-4 mr-1 text-primary" />
-                    : f.type === "application/pdf"
-                    ? <FileText className="w-4 h-4 mr-1 text-primary" />
-                    : <File className="w-4 h-4 mr-1 text-primary" />}
-                  <span className="truncate max-w-[100px]">{f.name}</span>
-                  <button onClick={() => removeFile(i)} title="Remove"
-                    className="ml-1 flex-shrink-0 hover:text-red-600"
-                    disabled={locked}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+              <div
+                className="flex items-center bg-secondary pr-2 pl-2 py-1 rounded text-xs font-medium mr-1 mb-1
+                border shadow-sm max-w-[180px] overflow-hidden">
+                <FileText className="w-4 h-4 mr-1 text-primary" />
+                <span className="truncate max-w-[100px]">{uploadedFile.name}</span>
+                <button onClick={onRemoveFile} title="Remove"
+                  className="ml-1 flex-shrink-0 hover:text-red-600 cursor-pointer"
+                  disabled={locked}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           )}
           <div className="flex items-end gap-2">
@@ -166,6 +177,7 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
                 placeholder="Ask about legal compliance, contracts, incorporation…"
                 value={inputMessage}
                 onChange={handleInputChange}
+                onPaste={handlePaste}
                 onKeyDown={handleKeyDown}
                 disabled={loading || locked}
                 className="min-h-[40px] max-h-[120px] resize-none overflow-y-auto"
@@ -212,7 +224,7 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
             onClick={onSend}
-            disabled={loading || locked || (!inputMessage.trim() && attachedFiles.length === 0)}
+            disabled={loading || locked || (!inputMessage.trim() && !uploadedFile)}
             className="cursor-pointer h-10 w-10 p-0 flex-shrink-0"
           >
             {loading ? (

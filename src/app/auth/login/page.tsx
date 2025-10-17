@@ -57,7 +57,7 @@ export default function LoginPage() {
 
   return (
     <motion.div 
-      className="container mx-auto px-4 py-16"
+      className="min-h-screen flex items-center justify-center px-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -78,7 +78,7 @@ export default function LoginPage() {
         </Button>
       </motion.div>
 
-      <div className="max-w-md mx-auto">
+      <div className="min-w-sm mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}

@@ -4,6 +4,10 @@ export interface Message {
   sender: "user" | "bot"
   timestamp: Date | string
   isTyping?: boolean
+  isFileReading?: boolean
+  fileId?: string
+  fileName?: string
+  fileDeleted?: boolean
 }
 
 

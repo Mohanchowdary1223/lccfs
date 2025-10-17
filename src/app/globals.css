@@ -124,4 +124,9 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Ensure interactive elements show pointer cursor by default */
+  button, a, [role="button"] {
+    cursor: pointer;
+  }
 }

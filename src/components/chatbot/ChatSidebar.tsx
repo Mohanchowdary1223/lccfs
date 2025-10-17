@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
@@ -13,17 +12,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
 import {
   Plus,
   Trash2,
   History,
   MoreVertical,
   MessageCircle,
-  Share2,
   Mail,
   Copy,
-  Check,
   Instagram,
 } from "lucide-react"
 import {
@@ -33,11 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { FaWhatsapp } from "react-icons/fa"
 import { ChatSession } from "./types"
 
@@ -50,6 +41,7 @@ interface ChatSidebarProps {
   onShareEmail: (chat: ChatSession) => void
   onShareInstagram: (chat: ChatSession) => void
   onCopyLink: (chat: ChatSession) => void
+  onDeleteAll?: () => void
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -61,20 +53,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onShareEmail,
   onShareInstagram,
   onCopyLink,
+  onDeleteAll,
 }) => {
   const { open, openMobile, isMobile, setOpen } = useSidebar()
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle')
+  // copy status not used here; handled in parent ShareButton
   const [showHistoryPopup, setShowHistoryPopup] = useState(false)
   const [popupOpenIndex, setPopupOpenIndex] = useState<number | null>(null)
   const historyButtonRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const handleCopyLink = (chat: ChatSession) => {
-    onCopyLink(chat)
-    setCopyStatus('copied')
-    setTimeout(() => setCopyStatus('idle'), 2000)
-  }
+  // copy handled by parent via onCopyLink prop
 
   const handleMouseEnterHistory = () => {
     if (!open && !isMobile) {
@@ -124,41 +113,54 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           side="left"
           variant="sidebar"
           collapsible="icon"
-          className="fixed left-0 top-16 bottom-0 z-50 w-[280px] border-r bg-background"
+          className="fixed left-0 top-16 bottom-0 z-50 w-[280px] border-r bg-background transition-all duration-200 ease-in-out"
         >
-          <SidebarHeader className="border-b">
+          <SidebarHeader className="border-b bg-muted/20">
             <SidebarMenu>
               <SidebarMenuItem>
-                <div className="flex w-full items-center justify-center p-2">
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <SidebarTrigger className="h-8 w-8 cursor-pointer" />
-                  </motion.div>
-                </div>
+                  {(isMobile ? openMobile : open) ? (
+                  <div className="flex w-full items-center justify-between p-3">
+                    <span className="font-semibold text-sm text-foreground">Legal Chat</span>
+                    <div className="flex items-center gap-2">
+                      {!isMobile && (
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <SidebarTrigger className="h-8 w-8 cursor-pointer" />
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex w-full items-center justify-center p-3">
+                    {!isMobile && (
+                      <motion.div
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <SidebarTrigger className="h-8 w-8 cursor-pointer" />
+                      </motion.div>
+                    )}
+                  </div>
+                )}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="flex-1 overflow-hidden">
-            <SidebarMenu className="px-2">
+            <SidebarMenu className="px-2 py-2 space-y-1">
               {/* New Chat Button */}
               <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <motion.div whileHover={{ scale: 1.02, x: 4 }} whileTap={{ scale: 0.98 }}>
-                      <SidebarMenuButton onClick={onNewChat} className="w-full cursor-pointer">
-                        <Plus className="size-4" />
-                        <span>New Legal Chat</span>
-                      </SidebarMenuButton>
-                    </motion.div>
-                  </TooltipTrigger>
-                  {!open && !isMobile && (
-                    <TooltipContent side="right">
-                      <p>New Legal Chat</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                <motion.div whileHover={{ scale: open ? 1.02 : 1.1, x: open ? 4 : 0 }} whileTap={{ scale: 0.98 }}>
+                  <SidebarMenuButton 
+                    onClick={onNewChat} 
+                    className="w-full cursor-pointer justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8"
+                    tooltip="New Legal Chat"
+                  >
+                    <Plus className="size-4 shrink-0" />
+                    <span className="group-data-[collapsible=icon]:sr-only">New Legal Chat</span>
+                  </SidebarMenuButton>
+                </motion.div>
               </SidebarMenuItem>
               {/* History Header */}
               <SidebarMenuItem>
@@ -167,21 +169,31 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   onMouseEnter={handleMouseEnterHistory}
                   onMouseLeave={handleMouseLeaveHistory}
                 >
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <motion.div whileHover={{ scale: 1.02, x: 4 }} whileTap={{ scale: 0.98 }}>
-                        <SidebarMenuButton className="w-full text-foreground cursor-pointer" onClick={handleHistoryClick}>
-                          <History className="size-4 text-foreground" />
-                          <span className="text-foreground">Recent Chats</span>
-                        </SidebarMenuButton>
-                      </motion.div>
-                    </TooltipTrigger>
-                    {!open && !isMobile && !showHistoryPopup && (
-                      <TooltipContent side="right">
-                        <p>Chat History</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <motion.div whileHover={{ scale: open ? 1.02 : 1.1, x: open ? 4 : 0 }} whileTap={{ scale: 0.98 }}>
+                    <SidebarMenuButton 
+                      className="w-full text-foreground cursor-pointer justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8" 
+                      onClick={handleHistoryClick}
+                      tooltip="Chat History"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <History className="size-4 text-foreground shrink-0" />
+                          <span className="text-foreground group-data-[collapsible=icon]:sr-only">Recent Chats</span>
+                        </div>
+                        {open && onDeleteAll && chatHistory && chatHistory.length > 0 && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => { e.stopPropagation(); onDeleteAll(); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onDeleteAll(); } }}
+                            className="text-xs text-destructive hover:underline cursor-pointer select-none"
+                          >
+                            Delete all
+                          </span>
+                        )}
+                      </div>
+                    </SidebarMenuButton>
+                  </motion.div>
                 </div>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -201,17 +213,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         transition={{ delay: index * 0.05 }}
                       >
                         <SidebarMenuItem>
-                          <div className="group flex w-full items-center p-2 rounded-lg hover:bg-muted/60 transition relative shadow-sm bg-background border border-border mb-2" style={{ minHeight: 60 }}>
+                          <div className="group flex w-full items-center p-3 rounded-lg hover:bg-muted/60 transition relative shadow-sm bg-card border border-border mb-2" style={{ minHeight: 60 }}>
                             <button
                               onClick={() => onContinueChat(chat)}
-                              className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3"
+                              className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3 cursor-pointer"
                               tabIndex={-1}
                             >
                               <span className="text-base font-bold text-primary-foreground">
                                 {chat.title?.[0]?.toUpperCase() || "#"}
                               </span>
                             </button>
-                            <div className="flex-1 min-w-0" onClick={() => onContinueChat(chat)}>
+                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onContinueChat(chat)}>
                               <div className="font-semibold text-foreground truncate">{chat.title}</div>
                               <div className="text-xs text-muted-foreground truncate">
                                 {chat.messages?.length || 0} messages
@@ -226,7 +238,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               <DropdownMenu open={popupOpenIndex === index} onOpenChange={open => setPopupOpenIndex(open ? index : null)}>
                                 <DropdownMenuTrigger asChild>
                                   <button
-                                    className="ml-2 flex items-center p-1 rounded hover:bg-primary/10 transition"
+                                    className="ml-2 flex items-center p-1 rounded hover:bg-primary/10 transition cursor-pointer"
                                     onClick={e => { e.stopPropagation(); setPopupOpenIndex(index) }}
                                     tabIndex={0}
                                     aria-label="More"
@@ -329,7 +341,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         {chat.title?.[0]?.toUpperCase() || "#"}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0" onClick={() => { onContinueChat(chat); setShowHistoryPopup(false); }}>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { onContinueChat(chat); setShowHistoryPopup(false); }}>
                       <div className="font-semibold text-foreground truncate">{chat.title}</div>
                       <div className="text-xs text-muted-foreground truncate">
                         {chat.messages?.length || 0} messages

@@ -11,14 +11,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { User, LogOut, Scale, MessageCircle, Info, Menu } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { User, LogOut, Scale, MessageCircle, Info, Menu, Bell } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function UserNavbar() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState<{ id: string; name: string; email: string; role: string } | null>(null)
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -59,6 +60,30 @@ export function UserNavbar() {
     window.dispatchEvent(new Event('tokenChange'))
     router.push('/')
   }
+  
+  const fetchNotificationCount = useCallback(async () => {
+    if (!isLoggedIn || !user) return
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/user/notifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const unreadCount = data.notifications?.filter((n: { read: boolean }) => !n.read)?.length || 0
+        setNotificationCount(unreadCount)
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+    }
+  }, [isLoggedIn, user])
+  
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      fetchNotificationCount()
+    }
+  }, [isLoggedIn, user, fetchNotificationCount])
+  
   const handleProfileClick = () => router.push('/user/profile')
   const handleChatAssistantClick = () => router.push('/user/chatbot')
   const handleAboutClick = () => router.push('/user/about')
@@ -93,9 +118,23 @@ export function UserNavbar() {
             <Button variant="ghost" onClick={handleAboutClick} className="cursor-pointer text-sm font-medium hover:text-primary">
               <Info className="mr-2 h-4 w-4" />About
             </Button>
+            <Button variant="ghost" onClick={() => router.push('/user/contact')} className="cursor-pointer text-sm font-medium hover:text-primary">
+              <MessageCircle className="mr-2 h-4 w-4" />Contact
+            </Button>
             <Button variant="ghost" onClick={handleChatAssistantClick} className="cursor-pointer text-sm font-medium hover:text-primary">
               <MessageCircle className="mr-2 h-4 w-4" />Chat Assistant
             </Button>
+            {isLoggedIn && (
+              <Button variant="ghost" onClick={() => router.push('/user/notifications')} className="cursor-pointer text-sm font-medium hover:text-primary relative">
+                <Bell className="mr-2 h-4 w-4" />
+                Notifications
+                {notificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {notificationCount}
+                  </span>
+                )}
+              </Button>
+            )}
           </div>
           {/* Theme toggle always shown */}
           <ThemeToggle />
@@ -109,7 +148,22 @@ export function UserNavbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-48" align="end">
                 <DropdownMenuItem onClick={handleAboutClick}><Info className="mr-2 h-4 w-4" />About</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/user/contact')}>Contact</DropdownMenuItem>
                 <DropdownMenuItem onClick={handleChatAssistantClick}><MessageCircle className="mr-2 h-4 w-4" />Chat Assistant</DropdownMenuItem>
+                {isLoggedIn && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/user/notifications')} className="relative">
+                      <Bell className="mr-2 h-4 w-4" />
+                      Notifications
+                      {notificationCount > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {notificationCount}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 {isLoggedIn && (
                   <>

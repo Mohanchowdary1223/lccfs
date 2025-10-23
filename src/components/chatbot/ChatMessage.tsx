@@ -12,6 +12,7 @@ interface ChatMessageProps {
   typingMessageId: string | null
   onTypingComplete: () => void
   onEdit?: (id: string, newText: string) => void
+  readOnly?: boolean
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -20,6 +21,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   typingMessageId,
   onTypingComplete,
   onEdit,
+  readOnly = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editingText, setEditingText] = useState(message.text)
@@ -201,6 +203,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <Paperclip className="h-4 w-4 text-gray-500" />
                   <span className="font-semibold flex-1">This file was deleted</span>
                 </div>
+              ) : readOnly ? (
+                <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-gray-600 dark:text-gray-300">
+                  <Paperclip className="h-4 w-4 text-gray-500" />
+                  <span className="font-semibold flex-1">File is secure</span>
+                </div>
               ) : (
                 <div 
                   className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/40 rounded-md cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors group"
@@ -213,7 +220,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <Eye className="h-4 w-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               )}
-              
+
               {/* Editable Text Message */}
               {message.text && !message.text.startsWith("Analyze this file:") && message.text !== "File uploaded for analysis" && (
                 isEditing ? (
@@ -342,19 +349,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </>
               )}
             </div>
-            {message.sender === "bot" && !isBotTyping && (
+                {message.sender === "bot" && !isBotTyping && (
               <div className="flex items-center gap-2 pt-1 opacity-80 text-[11px] text-gray-900/80 dark:text-white">
                 <span>
                   This response is AI-generated, not legal advice.
                 </span>
-                <button
-                  onClick={handleCopy}
-                  className={`ml-1 p-1 rounded-full hover:bg-primary/20 transition cursor-pointer`}
-                  title={copied ? "Copied!" : "Copy full response"}
-                  aria-label="Copy message"
-                >
-                  {copied ? <CheckIcon className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={handleCopy}
+                    className={`ml-1 p-1 rounded-full hover:bg-primary/20 transition cursor-pointer`}
+                    title={copied ? "Copied!" : "Copy full response"}
+                    aria-label="Copy message"
+                  >
+                    {copied ? <CheckIcon className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                )}
               </div>
             )}
           </div>

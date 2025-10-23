@@ -89,7 +89,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   }
   const handleInstagramShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
-    navigator.clipboard.writeText(shareText).then(() => { alert('Content copied! You can now paste it on Instagram.') })
+    navigator.clipboard.writeText(shareText).then(() => { alert('📋 Content copied to clipboard! You can now paste it on Instagram or anywhere else.') })
   }
   const handleCopyLink = (chat: ChatSession) => {
     const link = generateShareLink(chat)
@@ -186,17 +186,16 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
             </motion.div>
           ))}
           {chatHistory.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Scale className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No legal chats yet</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => router.push('/user/chatbot')}
-              >
-                Start Your First Chat
-              </Button>
-            </div>
+            <div className="text-center py-12">
+                            <Scale className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                            <h3 className="text-lg font-medium mb-2">No Legal Chats Yet</h3>
+                            <p className="text-muted-foreground mb-4">
+                              Start your first conversation with our legal compliance assistant
+                            </p>
+                            <Button onClick={() => router.push('/user/chatbot')}>
+                              Start Legal Chat
+                            </Button>
+                          </div>
           )}
         </CardContent>
         {/* Delete confirmation dialog */}

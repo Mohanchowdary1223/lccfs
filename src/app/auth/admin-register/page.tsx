@@ -40,7 +40,7 @@ export default function AdminRegisterPage() {
       const data = await response.json()
 
       if (response.ok) {
-        alert('Admin account created successfully!')
+        alert('🎉 Admin account created successfully! You can now log in with your credentials.')
         router.push('/auth/login')
       } else {
         setError(data.message || 'Registration failed')

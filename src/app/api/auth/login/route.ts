@@ -16,13 +16,19 @@ export async function POST(request: NextRequest) {
     const client = await clientPromise
     const db = client.db('legal_compliance_chatbot')
 
-    // Check in both users and admins collections
+    // Check in users collection first
     let user = await db.collection('users').findOne({ email })
     let role = 'user'
 
     if (!user) {
+      // Only check admins collection if not found in users
       user = await db.collection('admins').findOne({ email })
-      role = 'admin'
+      if (user) {
+        role = 'admin'
+      }
+    } else {
+      // User found in users collection - use their stored role or default to 'user'
+      role = (user.role as string) || 'user'
     }
 
     if (!user) {

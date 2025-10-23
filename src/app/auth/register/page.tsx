@@ -42,6 +42,7 @@ export default function RegisterPage() {
       const data = await response.json()
 
       if (response.ok) {
+        alert('🎉 Account created successfully! You can now log in with your credentials.')
         router.push('/auth/login')
       } else {
         setError(data.message || 'Registration failed')

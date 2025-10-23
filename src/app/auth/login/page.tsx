@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,8 +42,20 @@ export default function LoginPage() {
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user))
         }
+        
+        // Handle return URL for shared chat continuation - PRIORITY
+        if (returnUrl) {
+          router.push(decodeURIComponent(returnUrl))
+          return
+        }
+        
+        // Default role-based redirects only if no returnUrl
         if (data.role === 'admin') {
           router.push('/admin/dashboard')
+        } else if (data.role === 'blocked') {
+          // store blocked payload for unblock page
+          try { localStorage.setItem('blockedUser', JSON.stringify(data.user || { id: data.user?.id || '' })) } catch {}
+          router.push('/user/unblock')
         } else {
           router.push('/user/chatbot')
         }

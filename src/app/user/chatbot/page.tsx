@@ -189,7 +189,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
       if (["pdf", "jpg", "jpeg", "png", "doc", "docx"].includes(file.name.split('.').pop()?.toLowerCase() || "")) {
         if (chatInputRef.current && chatInputRef.current.addExternalFile) chatInputRef.current.addExternalFile(file);
       } else {
-        alert("Please select a PDF, DOC/DOCX, or image file.")
+        alert("📄 Please select a valid file: PDF, DOC/DOCX, or image files (JPG, PNG) only.")
       }
     }
   }
@@ -218,7 +218,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
   const handleInstagramShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
     navigator.clipboard.writeText(shareText).then(() => {
-      alert('Content copied! You can now paste it on Instagram.')
+      alert('📋 Content copied to clipboard! You can now paste it on Instagram or anywhere else.')
     })
   }
   const handleCopyLink = (chat: ChatSession) => {

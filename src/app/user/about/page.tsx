@@ -228,12 +228,7 @@ export default function HomePage() {
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-16">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
+            <div>
               <Card className="h-full border-destructive/20 bg-destructive/5">
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-2">
@@ -264,14 +259,9 @@ export default function HomePage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
+            <div>
               <Card className="h-full border-primary/20 bg-primary/5">
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-2">
@@ -302,7 +292,7 @@ export default function HomePage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           </div>
         </motion.section>
 

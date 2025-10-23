@@ -6,6 +6,38 @@ import clientPromise from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const chatId = url.searchParams.get('id')
+  const isShared = url.searchParams.get('shared') === '1'
+  
+  // Handle shared chat access (no authentication required)
+  if (isShared && chatId) {
+    try {
+      const client = await clientPromise
+      const db = client.db()
+      const chat = await db.collection('chats').findOne({ _id: new ObjectId(chatId) })
+      
+      if (!chat) {
+        return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
+      }
+      
+      // Return chat data for public viewing (remove sensitive user info)
+      const publicChat = {
+        _id: chat._id,
+        title: chat.title,
+        messages: chat.messages,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt
+      }
+      
+      return NextResponse.json({ chat: publicChat })
+    } catch (error) {
+      console.error('Error fetching shared chat:', error)
+      return NextResponse.json({ error: 'Failed to fetch shared chat' }, { status: 500 })
+    }
+  }
+  
+  // Regular user chat history (requires authentication)
   const userId = request.headers.get('x-user-id')
   if (!userId) {
     return NextResponse.json({ error: 'User ID required' }, { status: 400 })

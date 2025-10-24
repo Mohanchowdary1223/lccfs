@@ -22,12 +22,16 @@ import { SecurityTabProps } from './types'
 
 export const SecurityTab: React.FC<SecurityTabProps> = ({
   loading,
+  currentPassword,
   newPassword,
   confirmPassword,
   showPassword,
+  showCurrentPassword,
+  onCurrentPasswordChange,
   onPasswordChange,
   onConfirmPasswordChange,
   onPasswordToggle,
+  onCurrentPasswordToggle,
   onUpdateProfile,
   onDeleteAccount
 }) => {
@@ -39,6 +43,27 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
           <CardDescription>Update your account password</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="currentPassword">Current Password</Label>
+            <div className="relative">
+              <Input
+                id="currentPassword"
+                type={showCurrentPassword ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => onCurrentPasswordChange(e.target.value)}
+                placeholder="Enter current password"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                onClick={onCurrentPasswordToggle}
+              >
+                {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="newPassword">New Password</Label>
             <div className="relative">
@@ -72,7 +97,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
           </div>
           <Button
             onClick={onUpdateProfile}
-            disabled={loading || !newPassword || newPassword !== confirmPassword}
+            disabled={loading || !currentPassword || !newPassword || newPassword !== confirmPassword}
             className="w-full"
           >
             {loading ? 'Updating...' : 'Update Password'}

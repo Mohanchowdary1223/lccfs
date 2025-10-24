@@ -17,8 +17,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AlertCircle } from 'lucide-react'
 import { UserData, ChatSession, Message } from '@/components/profile/types'
+import { SuccessMessage } from "@/components/ui/success-message";
+import { useSuccessMessage } from "@/components/ui/success-message";
 
 export default function AdminUserDetailsPage() {
+  const { showMessage, hideMessage, show, message, type } = useSuccessMessage();
   const params = useParams() as { userId?: string }
   const userId = params.userId || ''
   const router = useRouter()
@@ -99,13 +102,13 @@ export default function AdminUserDetailsPage() {
       })
       
       if (response.ok) {
-        alert('✅ Report submitted successfully! User has been notified and will receive appropriate guidance.')
+        showMessage('✅ Report submitted successfully! User has been notified and will receive appropriate guidance.', 'success')
       } else {
-        alert('❌ Failed to submit report. Please try again or contact technical support.')
+        showMessage('❌ Failed to submit report. Please try again or contact technical support.', 'error')
       }
     } catch (e) { 
       console.error(e)
-      alert('❌ Failed to submit report. Please check your connection and try again.')
+      showMessage('❌ Failed to submit report. Please check your connection and try again.', 'error')
     } finally { 
       setReporting(false) 
     }
@@ -115,6 +118,12 @@ export default function AdminUserDetailsPage() {
 
   return (
     <div className="p-6 pt-24">
+      <SuccessMessage
+        show={show}
+        message={message}
+        type={type}
+        onClose={hideMessage}
+      />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">User details</h1>
         <div>

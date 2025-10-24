@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable prefer-const */
 
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
@@ -14,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (isShared && chatId) {
     try {
       const client = await clientPromise
-      const db = client.db()
+      const db = client.db('legal_compliance_chatbot')
       const chat = await db.collection('chats').findOne({ _id: new ObjectId(chatId) })
       
       if (!chat) {
@@ -44,7 +43,7 @@ export async function GET(request: NextRequest) {
   }
   try {
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
     // Only return chats for this user
     const chats = await db.collection('chats').find({ userId }).sort({ createdAt: -1 }).toArray()
     return NextResponse.json({ history: chats })
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
     const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
     let chat
     const chatId = body.chatId
     const title = body.title || 'Legal Query'
@@ -80,14 +79,81 @@ export async function POST(request: NextRequest) {
       messages = chat.messages || []
     }
     // Add user message
-    const userMsg = {
+    const userMsg: {
+      id: string
+      text: string
+      sender: string
+      timestamp: Date
+      fileId?: string
+      tempFileData?: any
+      fileName?: string
+    } = {
       id: Date.now().toString(),
-      text: body.message || (body.fileId ? 'File uploaded for analysis' : ''),
+      text: body.message || (body.tempFileData ? 'File uploaded for analysis' : ''),
       sender: 'user',
       timestamp: new Date(),
-      fileId: body.fileId || undefined,
-      fileName: body.fileName || undefined,
+      fileId: undefined, // Will be set after successful file storage
+      tempFileData: body.tempFileData, // Include temporary file data
+      fileName: body.fileName || (body.tempFileData ? body.tempFileData.originalName : undefined),
     }
+
+    // Pre-validate user question for legal compliance relevance (only if no file)
+    if (body.message && !body.tempFileData && !body.fileId) {
+      const messageLower = body.message.toLowerCase()
+      const legalKeywords = [
+        'legal', 'law', 'compliance', 'contract', 'agreement', 'terms', 'policy', 'regulation',
+        'incorporation', 'llc', 'corporation', 'company', 'business', 'startup', 'intellectual property',
+        'trademark', 'copyright', 'patent', 'privacy', 'gdpr', 'ccpa', 'employment', 'hire', 'firing',
+        'securities', 'investment', 'fundraising', 'investor', 'license', 'permit', 'tax', 'liability',
+        'insurance', 'lawsuit', 'sue', 'court', 'attorney', 'lawyer', 'legal advice', 'non-disclosure',
+        'nda', 'shareholder', 'equity', 'stock', 'bylaws', 'operating agreement', 'board', 'director',
+        'compliance', 'regulation', 'regulatory', 'formation', 'entity', 'partnership', 'sole proprietorship'
+      ]
+      
+      const isLegalQuestion = legalKeywords.some(keyword => 
+        messageLower.includes(keyword)
+      ) || messageLower.includes('legal') || messageLower.includes('business')
+      
+      if (!isLegalQuestion) {
+        // Store the chat with rejection message
+        messages.push(userMsg)
+        
+        const rejectionMsg = {
+          id: (Date.now() + 1).toString(),
+          text: "I'm a specialized legal compliance assistant for startups. I can only help with business legal matters such as company formation, contracts, intellectual property, employment law, privacy policies, and regulatory compliance. How can I assist you with your startup's legal needs?",
+          sender: 'bot',
+          timestamp: new Date(),
+        }
+        
+        messages.push(rejectionMsg)
+        
+        // Save the chat with rejection messages
+        let result
+        if (chatId) {
+          await db.collection('chats').updateOne(
+            { _id: new ObjectId(chatId), userId },
+            { $set: { messages, title, updatedAt: new Date(), userId, userName } }
+          )
+          chat = await db.collection('chats').findOne({ _id: new ObjectId(chatId), userId })
+        } else {
+          result = await db.collection('chats').insertOne({
+            userId,
+            userName,
+            title,
+            messages,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          chat = await db.collection('chats').findOne({ _id: result.insertedId })
+        }
+        
+        return NextResponse.json({ chat })
+      }
+    }
+
+    // If there's a file, it has already been validated during upload
+    // No need to re-validate here
+
     messages.push(userMsg)
 
     // If this is just a file upload message, don't generate a bot response
@@ -97,13 +163,50 @@ export async function POST(request: NextRequest) {
       // We can remove this special handling
     }
 
-    // Build full conversation context for Gemini
+    // Build full conversation context for Gemini with system prompt
+    const systemPrompt = `You are a specialized Legal Compliance Assistant for Startups. Your role is to provide expert guidance on legal compliance matters specifically for startups and small businesses.
+
+CORE EXPERTISE AREAS:
+- Business Formation (LLC, Corporation, Partnership)
+- Intellectual Property (Trademarks, Copyrights, Patents)
+- Employment Law & HR Compliance
+- Privacy Policies & Data Protection (GDPR, CCPA)
+- Terms of Service & User Agreements
+- Securities Law & Fundraising Compliance
+- Tax Compliance & Business Licenses
+- Contract Review & Negotiations
+- Regulatory Compliance by Industry
+- Business Insurance Requirements
+
+STRICT GUIDELINES:
+1. ONLY answer questions related to legal compliance for startups and businesses
+2. If asked about non-legal topics (personal matters, general advice, unrelated subjects), politely redirect: "I'm a specialized legal compliance assistant for startups. I can only help with business legal matters such as company formation, contracts, intellectual property, employment law, privacy policies, and regulatory compliance. How can I assist you with your startup's legal needs?"
+3. Always provide practical, actionable advice tailored to startups
+4. Include relevant disclaimers when appropriate
+5. Suggest when professional legal counsel should be consulted
+6. Focus on compliance requirements, best practices, and risk mitigation
+
+FILE ANALYSIS RULES:
+- Only analyze files that contain business-related legal content
+- If a file is unrelated to startup legal compliance, respond: "This file doesn't appear to contain startup legal compliance content. Please upload documents related to business formation, contracts, policies, or other legal compliance matters."
+- If the question about a legal file is unrelated to compliance, redirect to legal compliance aspects of the document
+
+RESPONSE STYLE:
+- Professional yet approachable
+- Practical and actionable
+- Include specific steps when possible
+- Mention compliance deadlines and requirements
+- Provide examples relevant to startups
+
+Remember: You are NOT a replacement for professional legal counsel. Always recommend consulting with a qualified attorney for complex matters or final legal decisions.`
+
     const contents = await Promise.all(
       messages.map(
         async (m: {
           sender: string
           text: any
           fileId?: string
+          tempFileData?: any
           file?: { originalName: string }
         }) => {
           const role = m.sender === 'user' ? 'user' : 'model'
@@ -114,7 +217,56 @@ export async function POST(request: NextRequest) {
             parts.push({ text: m.text })
           }
 
-          // If there's a fileId, fetch the file from MongoDB and add it appropriately
+          // Handle temporary file data (for current message)
+          if (m.tempFileData) {
+            try {
+              const fileData = m.tempFileData
+              
+              // If file was rejected, generate appropriate response
+              if (fileData.rejected) {
+                parts.push({ 
+                  text: fileData.rejectionReason || 'File rejected: Please upload documents related to startup legal compliance matters.' 
+                })
+              } else {
+                // For valid DOCX files, use extracted text
+                if (fileData.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                    fileData.originalName.toLowerCase().endsWith('.docx')) {
+                  if (fileData.extractedText) {
+                    // File has already been validated during upload for legal content
+                    const prompt = !m.text || m.text === 'File uploaded for analysis' || m.text.startsWith('Analyze this file:') 
+                      ? `Please analyze this legal document for startup compliance considerations. Focus on key legal terms, compliance requirements, potential risks, and actionable recommendations.\n\nDocument content from ${fileData.originalName}:\n\n${fileData.extractedText}`
+                      : `${m.text}\n\nDocument content from ${fileData.originalName}:\n\n${fileData.extractedText}`;
+                    
+                    parts.push({ text: prompt })
+                  } else {
+                    parts.push({ 
+                      text: `DOCX file "${fileData.originalName}" was uploaded but text could not be extracted.` 
+                    })
+                  }
+                } else {
+                  // For other file types (PDFs, images), use inlineData
+                  const filePart = {
+                    inlineData: {
+                      mimeType: fileData.mimeType,
+                      data: fileData.data, // data is already base64
+                    },
+                  }
+                  parts.push(filePart as any)
+                  
+                  // Add legal analysis request for file-only messages
+                  if (!m.text || m.text === 'File uploaded for analysis' || m.text.startsWith('Analyze this file:')) {
+                    parts.push({ 
+                      text: `Please analyze this document for startup legal compliance considerations. Focus on legal terms, compliance requirements, and actionable recommendations for the file: ${fileData.originalName}` 
+                    })
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Error processing temporary file data:', e)
+            }
+          }
+
+          // Handle stored files (for previous messages)
           if (m.fileId) {
             try {
               const fileDoc = await db
@@ -125,9 +277,10 @@ export async function POST(request: NextRequest) {
                 if (fileDoc.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
                     fileDoc.originalName.toLowerCase().endsWith('.docx')) {
                   if (fileDoc.extractedText) {
-                    // If there's no accompanying text, request a summary
+                    // File has already been validated during upload for legal content
+                    // If there's no accompanying text, request a legal analysis
                     const prompt = !m.text || m.text === 'File uploaded for analysis' || m.text.startsWith('Analyze this file:') 
-                      ? `Please analyze this document and provide a comprehensive summary in exactly 10 lines. Focus on the key points, main topics, and important details.\n\nDocument content from ${fileDoc.originalName}:\n\n${fileDoc.extractedText}`
+                      ? `Please analyze this legal document for startup compliance considerations. Focus on key legal terms, compliance requirements, potential risks, and actionable recommendations.\n\nDocument content from ${fileDoc.originalName}:\n\n${fileDoc.extractedText}`
                       : `${m.text}\n\nDocument content from ${fileDoc.originalName}:\n\n${fileDoc.extractedText}`;
                     
                     parts.push({ text: prompt })
@@ -137,7 +290,7 @@ export async function POST(request: NextRequest) {
                     })
                   }
                 } else {
-                  // For other file types (PDFs, images), use inlineData
+                  // For other file types (PDFs, images), use inlineData but add legal analysis request
                   const filePart = {
                     inlineData: {
                       mimeType: fileDoc.mimeType,
@@ -146,10 +299,10 @@ export async function POST(request: NextRequest) {
                   }
                   parts.push(filePart as any)
                   
-                  // Add analysis request for file-only messages
+                  // Add legal analysis request for file-only messages
                   if (!m.text || m.text === 'File uploaded for analysis' || m.text.startsWith('Analyze this file:')) {
                     parts.push({ 
-                      text: `Please analyze this file and provide a comprehensive summary in exactly 10 lines. Focus on the key points, main content, and important details from the file: ${fileDoc.originalName}` 
+                      text: `Please analyze this document for startup legal compliance considerations. If this file is not related to legal compliance for startups (business formation, contracts, policies, etc.), please let me know and ask for relevant legal documents instead. Focus on legal terms, compliance requirements, and actionable recommendations for the file: ${fileDoc.originalName}` 
                     })
                   }
                 }
@@ -175,6 +328,19 @@ export async function POST(request: NextRequest) {
 
     const validContents = contents.filter(Boolean) // Filter out any null messages
 
+    // Add system prompt as the first message
+    const messagesWithSystemPrompt = [
+      {
+        role: 'user',
+        parts: [{ text: systemPrompt }]
+      },
+      {
+        role: 'model', 
+        parts: [{ text: 'I understand. I am your specialized Legal Compliance Assistant for Startups. I will only provide guidance on legal compliance matters for startups and businesses, including business formation, intellectual property, employment law, contracts, privacy policies, and regulatory compliance. I will redirect any non-legal questions back to startup legal matters. How can I help you with your startup\'s legal compliance needs today?' }]
+      },
+      ...validContents
+    ]
+
     // The logic to find the most recent file is now handled by the mapping above.
     // We can remove the separate block that was here.
 
@@ -182,7 +348,7 @@ export async function POST(request: NextRequest) {
     const geminiRes = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: validContents }),
+      body: JSON.stringify({ contents: messagesWithSystemPrompt }),
     })
     const geminiData = await geminiRes.json()
     let botText = 'Sorry, I could not get a response.'
@@ -196,6 +362,37 @@ export async function POST(request: NextRequest) {
       timestamp: new Date(),
     }
     messages.push(botMsg)
+
+    // If we have temporary file data and bot response was successful, store the file now
+    let fileId = undefined
+    if (userMsg.tempFileData && !userMsg.tempFileData.rejected && botText && botText !== 'Sorry, I could not get a response.') {
+      try {
+        const fileDoc = {
+          originalName: userMsg.tempFileData.originalName,
+          mimeType: userMsg.tempFileData.mimeType,
+          data: userMsg.tempFileData.data,
+          extractedText: userMsg.tempFileData.extractedText,
+          uploadedBy: userId,
+          uploadedAt: new Date(),
+        }
+        
+        const fileResult = await db.collection('files').insertOne(fileDoc)
+        fileId = fileResult.insertedId.toString()
+        
+        // Update the user message with the actual fileId and remove tempFileData
+        userMsg.fileId = fileId
+        delete userMsg.tempFileData
+        
+        console.log('File stored successfully after bot response:', fileId)
+      } catch (error) {
+        console.error('Error storing file after successful bot response:', error)
+      }
+    } else if (userMsg.tempFileData && userMsg.tempFileData.rejected) {
+      // For rejected files, keep the rejection info but don't store the file
+      userMsg.fileName = 'File rejected'
+      delete userMsg.tempFileData
+      console.log('File was rejected, not storing in database')
+    }
 
     // Save chat, always store userId and userName
     let result
@@ -231,7 +428,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'User ID and chat ID required' }, { status: 400 })
     }
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     // Find the chat first to get the file IDs
     const chatToDelete = await db.collection('chats').findOne({ _id: new ObjectId(id), userId })

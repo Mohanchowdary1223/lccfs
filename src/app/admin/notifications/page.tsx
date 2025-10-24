@@ -15,6 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SuccessMessage } from "@/components/ui/success-message";
+import { useSuccessMessage } from "@/components/ui/success-message";
 
 type Notification = { _id: string; userId: string; message: string; type?: string; createdAt: string };
 type NoteWithUser = Notification & { userName?: string; userRole?: string };
@@ -26,6 +28,7 @@ const FILTERS = [
 ];
 
 const AdminNotificationsPage = () => {
+  const { showMessage, hideMessage, show, message, type } = useSuccessMessage();
   const [notes, setNotes] = useState<NoteWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -124,9 +127,9 @@ const AdminNotificationsPage = () => {
         });
         
         if (response.ok) {
-          alert(`✅ ${confirmDialog.userName} has been successfully blocked. They will no longer have access to the platform.`);
+          showMessage(`✅ ${confirmDialog.userName} has been successfully blocked. They will no longer have access to the platform.`, 'success');
         } else {
-          alert(`❌ Failed to block ${confirmDialog.userName}. Please try again.`);
+          showMessage(`❌ Failed to block ${confirmDialog.userName}. Please try again.`, 'error');
         }
       } else if (confirmDialog.action === 'unblock') {
         const response = await fetch("/api/admin/notifications", {
@@ -136,9 +139,9 @@ const AdminNotificationsPage = () => {
         });
         
         if (response.ok) {
-          alert(`✅ ${confirmDialog.userName} has been successfully unblocked and notified. They can now access the platform again.`);
+          showMessage(`✅ ${confirmDialog.userName} has been successfully unblocked and notified. They can now access the platform again.`, 'success');
         } else {
-          alert(`❌ Failed to unblock ${confirmDialog.userName}. Please try again.`);
+          showMessage(`❌ Failed to unblock ${confirmDialog.userName}. Please try again.`, 'error');
         }
       } else if (confirmDialog.action === 'delete') {
         console.log('Deleting notification:', confirmDialog.notificationId)
@@ -152,9 +155,9 @@ const AdminNotificationsPage = () => {
         console.log('Delete response:', responseData)
         
         if (response.ok && responseData.success) {
-          alert(`✅ Notification deleted successfully.`);
+          showMessage(`✅ Notification deleted successfully.`, 'success');
         } else {
-          alert(`❌ Failed to delete notification: ${responseData.message || 'Unknown error'}`);
+          showMessage(`❌ Failed to delete notification: ${responseData.message || 'Unknown error'}`, 'error');
         }
       }
       
@@ -162,7 +165,7 @@ const AdminNotificationsPage = () => {
       if (expandedId === confirmDialog.notificationId) setExpandedId(null);
     } catch (error) {
       console.error('Action failed:', error);
-      alert(`❌ An error occurred while performing the action. Please try again.`);
+      showMessage(`❌ An error occurred while performing the action. Please try again.`, 'error');
     } finally {
       setActionLoading(false);
       setConfirmDialog({ open: false, action: null, notificationId: '', userName: '', userId: '' });
@@ -218,6 +221,12 @@ const AdminNotificationsPage = () => {
 
   return (
     <div className="p-6 pt-24 max-w-4xl mx-auto">
+      <SuccessMessage
+        show={show}
+        message={message}
+        type={type}
+        onClose={hideMessage}
+      />
       <div className="flex flex-col gap-2 mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Notifications</h1>
         <p className="text-muted-foreground">Review, filter, and act on user notifications and requests.</p>

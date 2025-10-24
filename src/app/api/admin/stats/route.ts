@@ -18,28 +18,49 @@ export async function GET(request: Request) {
     const usersColl = db.collection('users')
     const chatsColl = db.collection('chats')
     const filesColl = db.collection('files')
+    const notificationsColl = db.collection('notifications')
 
     const totalUsers = await usersColl.countDocuments({ role: { $ne: 'blocked' } })
-    const blockedCount = await usersColl.countDocuments({ role: 'blocked' })
+    const blockedUsers = await usersColl.countDocuments({ role: 'blocked' })
+    const totalChats = await chatsColl.countDocuments({})
+    const totalNotifications = await notificationsColl.countDocuments({
+      $or: [
+        { type: { $in: ['unblock_request', 'issue', 'reply'] } },
+        { type: { $exists: false } }
+      ]
+    })
 
     // today's logins: assumes users have lastLogin field
     const start = new Date()
     start.setHours(0, 0, 0, 0)
     const todayLogins = await usersColl.countDocuments({ lastLogin: { $gte: start } })
 
-  // activity: total chats today
-  const chatsToday = await chatsColl.countDocuments({ createdAt: { $gte: start } })
+    // activity: total chats today
+    const chatsToday = await chatsColl.countDocuments({ createdAt: { $gte: start } })
 
-  // totals
-  const totalChats = await chatsColl.countDocuments({})
-  const totalUploads = await filesColl.countDocuments({})
+    // totals
+    const totalUploads = await filesColl.countDocuments({})
 
-  // monthly active users (last 30 days)
-  const monthAgo = new Date()
-  monthAgo.setDate(monthAgo.getDate() - 30)
-  const monthlyActive = await usersColl.countDocuments({ lastLogin: { $gte: monthAgo } })
+    // monthly active users (last 30 days)
+    const monthAgo = new Date()
+    monthAgo.setDate(monthAgo.getDate() - 30)
+    const monthlyActive = await usersColl.countDocuments({ lastLogin: { $gte: monthAgo } })
 
-  return NextResponse.json({ totalUsers, blockedCount, todayLogins, chatsToday, totalChats, totalUploads, monthlyActive })
+    return NextResponse.json({ 
+      stats: {
+        totalUsers,
+        blockedUsers,
+        totalNotifications,
+        totalChats
+      },
+      // Keep existing stats for backward compatibility
+      totalUsers, 
+      blockedCount: blockedUsers, 
+      todayLogins, 
+      chatsToday, 
+      totalUploads, 
+      monthlyActive 
+    })
   } catch (error) {
     console.error('Stats error', error)
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 })

@@ -1,8 +1,5 @@
 'use client'
 
-import {UserNavbar} from '@/components/user-navbar'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { motion } from 'framer-motion'
 import { 
@@ -17,8 +14,6 @@ import {
   Zap,
   Globe,
   Mail,
-  Phone,
-  MapPin,
   ArrowUp,
   ShieldUser
 } from 'lucide-react'
@@ -59,9 +54,9 @@ export default function HomePage() {
               transition={{ delay: 0.2, duration: 0.8 }}
               className="flex justify-center items-center gap-4 mb-8"
             >
-              <ShieldUser className="h-16 w-16 text-primary" />
-              <Scale className="h-12 w-12 text-primary" />
-              <FileText className="h-10 w-10 text-primary" />
+              <ShieldUser className="h-12 w-12 text-primary" />
+              <Scale className="h-16 w-16 text-primary" />
+              <FileText className="h-12 w-12 text-primary" />
             </motion.div>
             
             <motion.h1 

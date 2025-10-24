@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     // Connect to MongoDB and fetch real user files
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     // Fetch files from the database that belong to the user
     const userFiles = await db.collection('files')

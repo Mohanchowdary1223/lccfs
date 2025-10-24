@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
+import { SuccessMessage, useSuccessMessage } from '@/components/ui/success-message'
 import { 
   UserData, 
   ChatSession,
@@ -30,9 +31,12 @@ export default function UserProfilePage() {
   const [editEmail, setEditEmail] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
   const [showPassword, setShowPassword] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const router = useRouter()
+  const { show: showSuccessMessage, message: successMessage, type: messageType, showMessage, hideMessage } = useSuccessMessage()
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -148,28 +152,77 @@ export default function UserProfilePage() {
     setLoading(true)
     setError('')
     try {
-      const payload: Record<string, string> = { name: editName, email: editEmail }
-      if (newPassword) payload.password = newPassword
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userData?._id || ''
-        },
-        body: JSON.stringify(payload)
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setUserData(prev => prev ? { ...prev, name: editName, email: editEmail } : null)
-        setIsEditing(false)
-        setNewPassword('')
-        setConfirmPassword('')
-        updateLocalStorageUser(editName, editEmail)
+      if (newPassword) {
+        // Handle password change using the change-password API
+        if (!currentPassword) {
+          setError('Current password is required to change password')
+          showMessage('Current password is required to change password', 'error')
+          setLoading(false)
+          return
+        }
+
+        if (newPassword !== confirmPassword) {
+          setError('New passwords do not match')
+          showMessage('New passwords do not match', 'error')
+          setLoading(false)
+          return
+        }
+
+        const token = localStorage.getItem('token')
+        if (!token) {
+          setError('Authentication required')
+          showMessage('Authentication required', 'error')
+          setLoading(false)
+          return
+        }
+
+        const response = await fetch('/api/user/change-password', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword
+          })
+        })
+
+        const data = await response.json()
+        if (response.ok) {
+          setCurrentPassword('')
+          setNewPassword('')
+          setConfirmPassword('')
+          showMessage('Password changed successfully!', 'success')
+        } else {
+          setError(data.message || 'Failed to change password')
+          showMessage(data.message || 'Failed to change password', 'error')
+        }
       } else {
-        setError(data.error || data.message || 'Failed to update profile')
+        // Handle profile update (name and email only)
+        const payload: Record<string, string> = { name: editName, email: editEmail }
+        const response = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userData?._id || ''
+          },
+          body: JSON.stringify(payload)
+        })
+        const data = await response.json()
+        if (response.ok) {
+          setUserData(prev => prev ? { ...prev, name: editName, email: editEmail } : null)
+          setIsEditing(false)
+          updateLocalStorageUser(editName, editEmail)
+          showMessage('Profile updated successfully!', 'success')
+        } else {
+          setError(data.error || data.message || 'Failed to update profile')
+          showMessage('Failed to update profile', 'error')
+        }
       }
     } catch {
       setError('An error occurred while updating profile')
+      showMessage('An error occurred while updating profile', 'error')
     } finally {
       setLoading(false)
     }
@@ -185,13 +238,18 @@ export default function UserProfilePage() {
       })
       const data = await response.json()
       if (response.ok) {
-        clearUserData()
-        router.push('/auth/register')
+        showMessage('Account deleted successfully', 'success')
+        setTimeout(() => {
+          clearUserData()
+          router.push('/auth/register')
+        }, 1500)
       } else {
         setError(data.error || data.message || 'Failed to delete account')
+        showMessage('Failed to delete account', 'error')
       }
     } catch {
       setError('An error occurred while deleting account')
+      showMessage('An error occurred while deleting account', 'error')
     } finally {
       setLoading(false)
     }
@@ -205,6 +263,9 @@ export default function UserProfilePage() {
     setIsEditing(false)
     setEditName(userData?.name || '')
     setEditEmail(userData?.email || '')
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
   }
 
   if (loading && !userData) {
@@ -240,6 +301,12 @@ export default function UserProfilePage() {
       animate={{ opacity: 1, y: 0 }}
       className="min-h-screen bg-background pt-20"
     >
+      <SuccessMessage
+        show={showSuccessMessage}
+        message={successMessage}
+        type={messageType}
+        onClose={hideMessage}
+      />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-4xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -270,12 +337,16 @@ export default function UserProfilePage() {
           
           <SecurityTab
             loading={loading}
+            currentPassword={currentPassword}
             newPassword={newPassword}
             confirmPassword={confirmPassword}
             showPassword={showPassword}
+            showCurrentPassword={showCurrentPassword}
+            onCurrentPasswordChange={setCurrentPassword}
             onPasswordChange={setNewPassword}
             onConfirmPasswordChange={setConfirmPassword}
             onPasswordToggle={() => setShowPassword(!showPassword)}
+            onCurrentPasswordToggle={() => setShowCurrentPassword(!showCurrentPassword)}
             onUpdateProfile={handleUpdateProfile}
             onDeleteAccount={handleDeleteAccount}
           />

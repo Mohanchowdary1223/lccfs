@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     // Fetch notifications for this user
     const notifications = await db.collection('notifications')
@@ -73,7 +73,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     if (action === 'mark_read') {
       const result = await db.collection('notifications').updateOne(
@@ -129,7 +129,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     const result = await db.collection('notifications').deleteOne({
       _id: new ObjectId(notificationId),

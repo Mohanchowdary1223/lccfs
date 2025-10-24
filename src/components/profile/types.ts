@@ -83,12 +83,16 @@ export interface ProfileEditProps {
 
 export interface SecurityTabProps {
   loading: boolean
+  currentPassword: string
   newPassword: string
   confirmPassword: string
   showPassword: boolean
+  showCurrentPassword: boolean
+  onCurrentPasswordChange: (password: string) => void
   onPasswordChange: (password: string) => void
   onConfirmPasswordChange: (password: string) => void
   onPasswordToggle: () => void
+  onCurrentPasswordToggle: () => void
   onUpdateProfile: () => void
   onDeleteAccount: () => void
 }

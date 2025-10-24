@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog'
+import { SuccessMessage, useSuccessMessage } from '@/components/ui/success-message'
 import { MoreHorizontal, Trash2, Eye, Slash, User as UserIcon } from 'lucide-react'
 
 type UserItem = { _id: string; name?: string; email?: string; role?: string; chatCount?: number; fileCount?: number }
@@ -16,6 +17,7 @@ export default function UsersPage() {
   
   const router = useRouter()
   const [pendingDeactivate, setPendingDeactivate] = useState<UserItem | null>(null)
+  const { show: showSuccessMessage, message: successMessage, type: messageType, showMessage, hideMessage } = useSuccessMessage()
 
   const fetchUsers = async () => {
     const token = localStorage.getItem('token')
@@ -46,18 +48,18 @@ export default function UsersPage() {
       
       if (response.ok) {
         if (action === 'deactivate') {
-          alert('✅ User deactivated successfully! All user data including notifications have been permanently deleted.')
+          showMessage('User deactivated successfully! All user data including notifications have been permanently deleted.', 'success')
         } else if (action === 'block') {
-          alert('✅ User blocked successfully!')
+          showMessage('User blocked successfully!', 'success')
         } else if (action === 'unblock') {
-          alert('✅ User unblocked successfully!')
+          showMessage('User unblocked successfully!', 'success')
         }
       } else {
-        alert(`❌ Failed to ${action} user. Please try again.`)
+        showMessage(`Failed to ${action} user. Please try again.`, 'error')
       }
     } catch (error) {
-      console.error('Action failed:', error)
-      alert(`❌ Failed to ${action} user. Please check your connection and try again.`)
+      console.error(`Error ${action}ing user:`, error)
+      showMessage(`Failed to ${action} user. Please try again.`, 'error')
     }
     
     await fetchUsers()
@@ -65,6 +67,12 @@ export default function UsersPage() {
 
   return (
     <div className="p-6 pt-24">
+      <SuccessMessage
+        show={showSuccessMessage}
+        message={successMessage}
+        type={messageType}
+        onClose={hideMessage}
+      />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Users</h1>
         <div className="flex items-center gap-2">

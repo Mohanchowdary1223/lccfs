@@ -25,7 +25,7 @@ export async function GET(
     }
 
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     const fileDoc = await db.collection('files').findOne({
       _id: new ObjectId(fileId),
@@ -77,7 +77,7 @@ export async function DELETE(
     }
 
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     const fileObjId = new ObjectId(fileId)
     // Find the file first so we can reference the originalName in chat messages

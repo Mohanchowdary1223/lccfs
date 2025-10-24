@@ -7,9 +7,14 @@ import { ChatSession } from './types'
 import { } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-interface Props { chatHistory: ChatSession[]; limit?: number; userId: string }
+interface Props { 
+  chatHistory: ChatSession[]; 
+  limit?: number; 
+  userId: string;
+  onSuccess?: (message: string, type?: 'success' | 'error') => void;
+}
 
-export const AdminRecentActivity: React.FC<Props> = ({ chatHistory, limit = 10, userId }) => {
+export const AdminRecentActivity: React.FC<Props> = ({ chatHistory, limit = 10, userId, onSuccess }) => {
   const router = useRouter()
   const display = chatHistory.slice(0, limit)
 
@@ -18,8 +23,19 @@ export const AdminRecentActivity: React.FC<Props> = ({ chatHistory, limit = 10, 
     if (!confirm('Report this chat as inappropriate? This will notify the user.')) return
     try {
       await fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, message: `Admin reported chat "${title || chatId}" as inappropriate.`, type: 'report', chatId }) })
-      alert('Report sent')
-    } catch (e) { console.error(e); alert('Failed to send report') }
+      if (onSuccess) {
+        onSuccess('Report sent', 'success')
+      } else {
+        alert('Report sent')
+      }
+    } catch (e) { 
+      console.error(e); 
+      if (onSuccess) {
+        onSuccess('Failed to send report', 'error')
+      } else {
+        alert('Failed to send report')
+      }
+    }
   }
 
   return (

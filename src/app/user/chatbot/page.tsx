@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { ChatSidebar } from "@/components/chatbot/ChatSidebar"
 import { ChatMessage } from "@/components/chatbot/ChatMessage"
 import { ChatInput } from "@/components/chatbot/ChatInput"
@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/chatbot/EmptyState"
 import { ShareButton } from "@/components/chatbot/ShareButton"
 import { Message, ChatSession } from "@/components/chatbot/types"
 import { useToast } from '@/components/ui/toast'
+import { SuccessMessage, useSuccessMessage } from '@/components/ui/success-message'
 import { getUserIdFromLocalStorage } from "@/components/chatbot/utils"
 import { CheckCircle } from "lucide-react"
 import {
@@ -29,7 +30,6 @@ const LegalComplianceChatBotContent: React.FC = () => {
   const [currentChat, setCurrentChat] = useState<ChatSession | null>(null)
   const [loading, setLoading] = useState(false)
   const [inputMessage, setInputMessage] = useState("")
-  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
   const [pageDragActive, setPageDragActive] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
@@ -37,6 +37,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<{ id?: string; file?: File; name: string } | null>(null)
   const toast = useToast()
   const [, setIsFileReading] = useState(false)
+  const { show: showSuccessMessage, message: successMessage, type: messageType, showMessage, hideMessage } = useSuccessMessage()
 
   const { open, openMobile, isMobile, setOpen, setOpenMobile } = useSidebar()
 
@@ -189,7 +190,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
       if (["pdf", "jpg", "jpeg", "png", "doc", "docx"].includes(file.name.split('.').pop()?.toLowerCase() || "")) {
         if (chatInputRef.current && chatInputRef.current.addExternalFile) chatInputRef.current.addExternalFile(file);
       } else {
-        alert("📄 Please select a valid file: PDF, DOC/DOCX, or image files (JPG, PNG) only.")
+        showMessage("📄 Please select a valid file: PDF, DOC/DOCX, or image files (JPG, PNG) only.", "error")
       }
     }
   }
@@ -218,7 +219,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
   const handleInstagramShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
     navigator.clipboard.writeText(shareText).then(() => {
-      alert('📋 Content copied to clipboard! You can now paste it on Instagram or anywhere else.')
+      showMessage('📋 Content copied to clipboard! You can now paste it on Instagram or anywhere else.', 'success')
     })
   }
   const handleCopyLink = (chat: ChatSession) => {
@@ -250,7 +251,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
       text: inputMessage || (uploadedFile ? `Analyze this file: ${uploadedFile.name}` : ""),
       sender: "user",
       timestamp: new Date(),
-      fileId: uploadedFile?.id,
+      fileId: uploadedFile?.id, // Will be updated after successful processing
       fileName: uploadedFile?.name,
     }
 
@@ -268,8 +269,9 @@ const LegalComplianceChatBotContent: React.FC = () => {
     }
     setInputMessage("")
     try {
-      // If there's a local file (not yet uploaded), upload it first
-      let fileIdToSend = uploadedFile?.id
+      // If there's a local file (not yet uploaded), process it first
+      let tempFileData = null
+      
       if (uploadedFile?.file && !uploadedFile.id) {
         try {
           const fd = new FormData()
@@ -277,30 +279,40 @@ const LegalComplianceChatBotContent: React.FC = () => {
           fd.append('userId', userId)
           const uploadRes = await fetch('/api/legalbot/upload', { method: 'POST', body: fd })
           const uploadData = await uploadRes.json()
-          if (!uploadRes.ok || !uploadData.fileId) {
+          
+          if (!uploadRes.ok) {
             throw new Error(uploadData.error || 'Upload failed')
           }
-          fileIdToSend = uploadData.fileId
-          // update uploadedFile id so preview/other logic uses it
-          setUploadedFile({ id: uploadData.fileId, name: uploadData.originalFileName || uploadedFile.name })
+          
+          // Store temporary file data (not in database yet)
+          tempFileData = uploadData.tempFileData
+          
+          // Check if file was rejected (new logic)
+          if (uploadData.rejected || (tempFileData && tempFileData.rejected)) {
+            // File was rejected but we still continue to process the chat
+            console.log('File was rejected, will show as "File rejected" in chat')
+          }
+          
         } catch (err) {
           console.error('Upload error', err)
-          toast.push('Failed to upload file. Please try again.', 'error')
+          toast.push('Failed to process file. Please try again.', 'error')
           setLoading(false)
           return
         }
       }
 
       const chatId = currentChat?._id
+      const fileDisplayName = tempFileData && tempFileData.rejected ? 'File rejected' : uploadedFile?.name
+      
       const res = await fetch("/api/legalbot", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": userId },
         body: JSON.stringify({
           chatId,
           message: inputMessage,
-          title: currentChat?.title || (inputMessage || uploadedFile?.name || "New Chat").slice(0, 30) + ((inputMessage || uploadedFile?.name || "").length > 30 ? "…" : ""),
-          fileId: fileIdToSend,
-          fileName: uploadedFile?.name,
+          title: currentChat?.title || (inputMessage || fileDisplayName || "New Chat").slice(0, 30) + ((inputMessage || fileDisplayName || "").length > 30 ? "…" : ""),
+          tempFileData: tempFileData,
+          fileName: fileDisplayName,
         }),
       })
       const data = await res.json()
@@ -404,8 +416,7 @@ const LegalComplianceChatBotContent: React.FC = () => {
         const remaining = chatHistory.filter((c) => c._id !== id)
         setCurrentChat(remaining[0] ?? null)
       }
-      setShowDeleteSuccess(true)
-      setTimeout(() => setShowDeleteSuccess(false), 3000)
+      showMessage('Chat deleted successfully!', 'success')
     } catch {}
   }
 
@@ -445,20 +456,12 @@ const LegalComplianceChatBotContent: React.FC = () => {
         onDragLeave={handlePageDragLeave}
         onDrop={handlePageDrop}
       >
-<AnimatePresence>
-  {showDeleteSuccess && (
-    <motion.div
-      initial={{ opacity: 0, y: -50, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -50, scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      className="fixed top-20 right-4 z-[60] rounded-md bg-green-500 px-4 py-2 text-white shadow-lg flex items-center gap-2"
-    >
-      <CheckCircle className="w-5 h-5 text-white" />
-      <span>Chat deleted successfully!</span>
-    </motion.div>
-  )}
-</AnimatePresence>
+        <SuccessMessage
+          show={showSuccessMessage}
+          message={successMessage}
+          type={messageType}
+          onClose={hideMessage}
+        />
 
         <ShareButton
           currentChat={currentChat}

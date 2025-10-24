@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const url = new URL(request.url)
     const scope = url.searchParams.get('scope') || 'all' // files | chats | all
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     if (scope === 'chats') {
       // Delete chats and any files referenced by those chats

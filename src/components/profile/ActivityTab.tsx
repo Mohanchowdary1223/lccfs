@@ -35,9 +35,10 @@ interface ActivityTabProps {
   chatHistory: ChatSession[]
   uploadedFiles: UploadedFile[]
   onFilesReload?: () => Promise<void>
+  onSuccess?: (message: string, type?: 'success' | 'error') => void;
 }
 
-export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedFiles, onFilesReload }) => {
+export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedFiles, onFilesReload, onSuccess }) => {
   const router = useRouter()
   const toast = useToast()
   // state placeholder removed
@@ -63,7 +64,13 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
   }
   const handleInstagramShare = (chat: ChatSession) => {
     const shareText = generateShareContent(chat)
-    navigator.clipboard.writeText(shareText).then(() => { alert('Content copied! You can now paste it on Instagram.') })
+    navigator.clipboard.writeText(shareText).then(() => { 
+      if (onSuccess) {
+        onSuccess('Content copied! You can now paste it on Instagram.', 'success')
+      } else {
+        alert('Content copied! You can now paste it on Instagram.')
+      }
+    })
   }
   const handleCopyLink = (chat: ChatSession) => {
     const link = generateShareLink(chat)

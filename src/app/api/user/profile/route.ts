@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
   try {
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
     // Try to find user in users collection
     let user = await db.collection('users').findOne({ _id: new ObjectId(userId) })
     if (!user) {
@@ -41,7 +41,7 @@ export async function PUT(request: NextRequest) {
   }
   try {
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
     const body = await request.json()
     const update: Record<string, unknown> = {}
     if (body.name) update.name = body.name
@@ -77,7 +77,7 @@ export async function DELETE(request: NextRequest) {
   }
   try {
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
     // Remove user from users collection
     const userResult = await db.collection('users').deleteOne({ _id: new ObjectId(userId) })
     // Remove user from admins collection (if present)

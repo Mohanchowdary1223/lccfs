@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const client = await clientPromise
-    const db = client.db()
+    const db = client.db('legal_compliance_chatbot')
 
     // Get user details for professional message
     const user = await db.collection('users').findOne({ _id: new ObjectId(userId) })

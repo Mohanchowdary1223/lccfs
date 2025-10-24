@@ -19,11 +19,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { SuccessMessage } from "@/components/ui/success-message";
+import { useSuccessMessage } from "@/components/ui/success-message";
 import { ChatSession, Message } from '@/components/chatbot/types'
 
 type FetchedChat = { _id: string; title?: string; messages?: Message[]; createdAt?: string; updatedAt?: string }
 
 const AdminChatViewContent: React.FC = () => {
+  const { showMessage, hideMessage, show, message, type } = useSuccessMessage();
   const search = useSearchParams()
   const params = useParams() as { chatId?: string }
   const router = useRouter()
@@ -102,13 +105,13 @@ const AdminChatViewContent: React.FC = () => {
       })
       
       if (response.ok) {
-        alert('✅ Report submitted successfully! User has been notified and will receive appropriate guidance.')
+        showMessage('✅ Report submitted successfully! User has been notified and will receive appropriate guidance.', 'success')
       } else {
-        alert('❌ Failed to submit report. Please try again or contact technical support.')
+        showMessage('❌ Failed to submit report. Please try again or contact technical support.', 'error')
       }
     } catch (e) { 
       console.error(e)
-      alert('❌ Failed to submit report. Please check your connection and try again.')
+      showMessage('❌ Failed to submit report. Please check your connection and try again.', 'error')
     } finally { 
       setReporting(false) 
     }
@@ -116,6 +119,12 @@ const AdminChatViewContent: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
+      <SuccessMessage
+        show={show}
+        message={message}
+        type={type}
+        onClose={hideMessage}
+      />
       {/* Admin Sidebar - Simplified */}
       <div className="w-[280px] border-r pt-20 bg-background flex flex-col h-full flex-shrink-0">
         <div className="border-b bg-muted/20 p-4 flex-shrink-0">

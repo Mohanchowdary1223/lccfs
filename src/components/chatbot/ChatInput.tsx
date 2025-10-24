@@ -15,6 +15,7 @@ interface ChatInputProps {
   onSendMessage: () => void
   onFileUpload: (file: File) => void
   onRemoveFile: () => void
+  onSuccess?: (message: string, type?: 'success' | 'error') => void;
 }
 
 export const ChatInput = forwardRef<any, ChatInputProps>(({
@@ -27,6 +28,7 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
   onSendMessage,
   onFileUpload,
   onRemoveFile,
+  onSuccess,
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -84,7 +86,11 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
       onFileUpload(file)
       setModalOpen(false)
     } else if (file) {
-      alert("Please select a valid file type.")
+      if (onSuccess) {
+        onSuccess("Please select a valid file type.", 'error')
+      } else {
+        alert("Please select a valid file type.")
+      }
     }
     e.target.value = ""
   }
@@ -110,7 +116,11 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
       ) {
         onFileUpload(file)
       } else {
-        alert("Please select a PDF, DOC/DOCX, or image file.")
+        if (onSuccess) {
+          onSuccess("Please select a PDF, DOC/DOCX, or image file.", 'error')
+        } else {
+          alert("Please select a PDF, DOC/DOCX, or image file.")
+        }
       }
     }
   }

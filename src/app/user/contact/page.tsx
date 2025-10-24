@@ -4,8 +4,11 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Send } from "lucide-react";
+import { SuccessMessage } from "@/components/ui/success-message";
+import { useSuccessMessage } from "@/components/ui/success-message";
 
 export default function ContactPage() {
+  const { showMessage, hideMessage, show, message: successMessage, type } = useSuccessMessage();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -24,17 +27,23 @@ export default function ContactPage() {
           type: "issue",
         }),
       });
-      alert("✅ Issue submitted successfully! Our support team will review your request and respond soon.");
+      showMessage("✅ Issue submitted successfully! Our support team will review your request and respond soon.", 'success');
       setMessage("");
     } catch (e) {
       console.error(e);
-      alert("❌ Failed to submit issue. Please try again or contact support directly.");
+      showMessage("❌ Failed to submit issue. Please try again or contact support directly.", 'error');
     }
     setSending(false);
   };
 
   return (
     <div className="min-h-screen pt-24 flex items-center justify-center bg-background">
+      <SuccessMessage
+        show={show}
+        message={successMessage}
+        type={type}
+        onClose={hideMessage}
+      />
       <Card className="w-full max-w-lg shadow-lg border">
         <CardHeader className="pb-2">
           <h1 className="text-2xl font-bold text-foreground">Contact Support</h1>

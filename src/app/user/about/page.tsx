@@ -373,7 +373,7 @@ export default function HomePage() {
               transition={{ duration: 0.6 }}
             >
               <div className="flex items-center gap-2 mb-4">
-                <ShieldUser className="h-6 w-6 text-primary" />
+                <Scale className="h-6 w-6 text-primary" />
                 <h3 className="text-lg font-bold">LCCFS</h3>
               </div>
               <p className="text-muted-foreground mb-4">

@@ -127,7 +127,15 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                 <div className="min-w-0 w-32 sm:w-auto">
                   <p className="font-medium truncate max-w-md">{chat.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {chat.messages?.length || 0} messages • {new Date(chat.updatedAt).toLocaleDateString()}
+                    {chat.messages?.length || 0} messages • {new Date(chat.updatedAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}, {new Date(chat.updatedAt).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}
                   </p>
                 </div>
               </div>

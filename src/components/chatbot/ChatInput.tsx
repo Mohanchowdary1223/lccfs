@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Send, Paperclip, FileImage, FileText, File, X } from "lucide-react"
 
+
 interface ChatInputProps {
   inputMessage: string
   loading: boolean
@@ -17,6 +18,7 @@ interface ChatInputProps {
   onRemoveFile: () => void
   onSuccess?: (message: string, type?: 'success' | 'error') => void;
 }
+
 
 export const ChatInput = forwardRef<any, ChatInputProps>(({
   inputMessage,
@@ -37,12 +39,14 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
   const fileInputDoc = useRef<HTMLInputElement>(null)
   const [dragOverInput, setDragOverInput] = useState(false)
 
+
   // Allow parent to add files from global page drop
   useImperativeHandle(ref, () => ({
     addExternalFile: (file: File) => {
       onFileUpload(file)
     }
   }))
+
 
   // Handle textarea input
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -65,6 +69,7 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
     if (locked) return
     onSendMessage()
   }
+
 
   // File upload modal and chips
   const triggerFileSelect = (type: "pdf" | "image" | "doc") => {
@@ -94,6 +99,7 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
     }
     e.target.value = ""
   }
+
 
   // Drag/Drop on textarea itself
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -125,6 +131,7 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
     }
   }
 
+
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (locked) return
     const items = e.clipboardData?.items
@@ -147,12 +154,13 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
     }
   }
 
+
   return (
     <motion.div
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.4 }}
-      className="border-t bg-background p-4"
+      className="border-t bg-background p-3 sm:p-4"
     >
       <div className="flex space-x-2 max-w-4xl mx-auto items-end">
         <div
@@ -163,92 +171,109 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
           onDrop={handleDrop}
         >
           {/* File chips */}
-          {uploadedFile && (
-            <div className="flex flex-wrap gap-2 mb-1">
-              <div
-                className="flex items-center bg-secondary pr-2 pl-2 py-1 rounded text-xs font-medium mr-1 mb-1
-                border shadow-sm max-w-[180px] overflow-hidden">
-                <FileText className="w-4 h-4 mr-1 text-primary" />
-                <span className="truncate max-w-[100px]">{uploadedFile.name}</span>
-                <button onClick={onRemoveFile} title="Remove"
-                  className="ml-1 flex-shrink-0 hover:text-red-600 cursor-pointer"
-                  disabled={locked}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="flex items-end gap-2">
-            {/* Drag overlay on textarea */}
-            <div className="relative flex-1">
-              <Textarea
-                ref={textareaRef}
-                placeholder="Ask about legal compliance, contracts, incorporation…"
-                value={inputMessage}
-                onChange={handleInputChange}
-                onPaste={handlePaste}
-                onKeyDown={handleKeyDown}
-                disabled={loading || locked}
-                className="min-h-[40px] max-h-[120px] resize-none overflow-y-auto"
-                rows={1}
-                style={{ background: undefined }}
-              />
-              {/* Show overlay if dragging input or page */}
-              <AnimatePresence>
-                {(dragOverInput || dragActive) && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-10 flex flex-col items-center justify-center
-                      border-2 border-dashed border-primary bg-primary/10 rounded"
+          <AnimatePresence>
+            {uploadedFile && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex flex-wrap gap-2"
+              >
+                <div
+                  className="flex items-center bg-secondary/80 backdrop-blur-sm px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium
+                  border border-border shadow-sm max-w-full sm:max-w-[220px] overflow-hidden transition-all hover:shadow-md">
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 text-primary flex-shrink-0" />
+                  <span className="truncate flex-1 min-w-0">{uploadedFile.name}</span>
+                  <button 
+                    onClick={onRemoveFile} 
+                    title="Remove file"
+                    className="ml-2 flex-shrink-0 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={locked}
                   >
-                    <span className="text-primary font-semibold text-base">
-                      Drop file to add as attachment
-                    </span>
-                    <span className="text-xs text-muted-foreground">(PDF, DOC, DOCX, JPG, PNG)</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            {/* Upload buttons, hidden inputs */}
-            <input ref={fileInputPdf} type="file" accept=".pdf" style={{ display: "none" }}
-              onChange={e => handleFileChange(e, ["pdf"])} />
-            <input ref={fileInputImage} type="file" accept="image/png,image/jpeg,image/jpg" style={{ display: "none" }}
-              onChange={e => handleFileChange(e, ["jpg", "jpeg", "png"])} />
-            <input ref={fileInputDoc} type="file" accept=".doc,.docx" style={{ display: "none" }}
-              onChange={e => handleFileChange(e, ["doc", "docx"])} />
+                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Textarea with integrated upload button */}
+          <div className="relative flex items-center">
+            <Textarea
+              ref={textareaRef}
+placeholder="Ask your legal compliance questions..."
+              value={inputMessage}
+              onChange={handleInputChange}
+              onPaste={handlePaste}
+              onKeyDown={handleKeyDown}
+              disabled={loading || locked}
+              className="min-h-[44px] sm:min-h-[48px] max-h-[120px] resize-none overflow-y-auto text-sm sm:text-base pr-12 sm:pr-14 py-3 leading-relaxed transition-all"
+              rows={1}
+              style={{ background: undefined }}
+            />
+            
+            {/* Upload button inside textarea - positioned to align with text */}
             <Button
               type="button"
-              variant="outline"
-              className="h-10 w-10 p-0 flex-shrink-0"
+              variant="ghost"
+              className="absolute right-1.5 bottom-1.5 h-8 w-8 p-0 flex-shrink-0 transition-all hover:bg-secondary rounded-md"
               title="Upload file"
               onClick={() => setModalOpen(true)}
               disabled={loading || locked}
             >
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-foreground transition-colors" />
             </Button>
+            
+            {/* Drag overlay */}
+            <AnimatePresence>
+              {(dragOverInput || dragActive) && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-10 flex flex-col items-center justify-center
+                    border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm rounded-md"
+                >
+                  <span className="text-primary font-semibold text-sm sm:text-base text-center px-2">
+                    Drop file to add as attachment
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    (PDF, DOC, DOCX, JPG, PNG)
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+          
+          {/* Hidden file inputs */}
+          <input ref={fileInputPdf} type="file" accept=".pdf" style={{ display: "none" }}
+            onChange={e => handleFileChange(e, ["pdf"])} />
+          <input ref={fileInputImage} type="file" accept="image/png,image/jpeg,image/jpg" style={{ display: "none" }}
+            onChange={e => handleFileChange(e, ["jpg", "jpeg", "png"])} />
+          <input ref={fileInputDoc} type="file" accept=".doc,.docx" style={{ display: "none" }}
+            onChange={e => handleFileChange(e, ["doc", "docx"])} />
         </div>
+        
+        {/* Send button */}
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
             onClick={onSend}
             disabled={loading || locked || (!inputMessage.trim() && !uploadedFile)}
-            className="cursor-pointer h-10 w-10 p-0 flex-shrink-0"
+            className="cursor-pointer h-10 w-10 sm:h-11 sm:w-11 p-0 flex-shrink-0 transition-all"
           >
             {loading ? (
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="h-4 w-4 rounded-full border-2 border-muted border-t-primary"
+                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                className="h-4 w-4 sm:h-5 sm:w-5 rounded-full border-2 border-muted border-t-primary"
               />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 sm:h-5 sm:w-5" />
             )}
           </Button>
         </motion.div>
       </div>
+      
       {/* Upload Modal */}
       <AnimatePresence>
         {modalOpen && (
@@ -256,50 +281,74 @@ export const ChatInput = forwardRef<any, ChatInputProps>(({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-background shadow-xl p-8 rounded-lg border w-[480px] max-w-lg flex flex-col items-center"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.3 }}
+              className="relative bg-background shadow-2xl p-6 sm:p-8 rounded-xl border w-full max-w-[95vw] sm:max-w-md flex flex-col items-center"
               onClick={e => e.stopPropagation()}
               tabIndex={0}
             >
               <button
-                className="absolute top-3 right-3 rounded-full bg-muted p-1 hover:bg-red-500 hover:text-white focus:outline-none"
+                className="absolute top-3 right-3 rounded-full bg-secondary/80 p-1.5 hover:bg-red-500 hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-primary"
                 onClick={() => setModalOpen(false)}
                 tabIndex={1}
                 disabled={locked}
+                aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
+              
               <div className="w-full flex flex-col gap-4 items-center justify-center">
-                <span className="font-bold text-lg mb-2 text-foreground">Upload File</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <Paperclip className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                  <span className="font-bold text-lg sm:text-xl text-foreground">Upload File</span>
+                </div>
+                
                 <div className="flex flex-col gap-3 w-full">
-                  <Button className="w-full justify-start" variant="outline" onClick={() => triggerFileSelect("pdf")} disabled={locked}>
-                    <FileText className="mr-2 w-5 h-5 text-primary" /> Upload PDF
+                  <Button 
+                    className="w-full justify-start h-11 sm:h-12 text-sm sm:text-base" 
+                    variant="outline" 
+                    onClick={() => triggerFileSelect("pdf")} 
+                    disabled={locked}
+                  >
+                    <FileText className="mr-2 w-5 h-5 text-primary" /> 
+                    <span>Upload PDF</span>
                   </Button>
-                  <Button className="w-full justify-start" variant="outline" onClick={() => triggerFileSelect("image")} disabled={locked}>
-                    <FileImage className="mr-2 w-5 h-5 text-primary" /> Upload Image (JPG/PNG)
+                  <Button 
+                    className="w-full justify-start h-11 sm:h-12 text-sm sm:text-base" 
+                    variant="outline" 
+                    onClick={() => triggerFileSelect("image")} 
+                    disabled={locked}
+                  >
+                    <FileImage className="mr-2 w-5 h-5 text-primary" /> 
+                    <span>Upload Image (JPG/PNG)</span>
                   </Button>
-                  <Button className="w-full justify-start" variant="outline" onClick={() => triggerFileSelect("doc")} disabled={locked}>
-                    <File className="mr-2 w-5 h-5 text-primary" /> Upload Doc (DOC/DOCX)
+                  <Button 
+                    className="w-full justify-start h-11 sm:h-12 text-sm sm:text-base" 
+                    variant="outline" 
+                    onClick={() => triggerFileSelect("doc")} 
+                    disabled={locked}
+                  >
+                    <File className="mr-2 w-5 h-5 text-primary" /> 
+                    <span>Upload Doc (DOC/DOCX)</span>
                   </Button>
                 </div>
-                <div
-                  className={`
-                    w-full h-20 mt-3 bg-primary/10 flex flex-col items-center justify-center relative transition
-                    border-2 border-dashed border-primary rounded-lg
-                  `}
-                >
-                  <span className="text-[18px] text-primary font-semibold pointer-events-none">
-                    --- Drag & Drop PDF, Image, or DOC here ---
-                  </span>
-                  <span className="text-xs text-muted-foreground pointer-events-none">
-                    (PDF, DOC, DOCX, JPG, PNG allowed)
-                  </span>
+                
+                <div className="w-full mt-2">
+                  <div className="w-full h-24 sm:h-28 bg-primary/10 flex flex-col items-center justify-center relative transition-all
+                    border-2 border-dashed border-primary rounded-lg hover:bg-primary/15">
+                    <span className="text-sm sm:text-base text-primary font-semibold pointer-events-none text-center px-2">
+                      Drag & Drop files here
+                    </span>
+                    <span className="text-xs sm:text-sm text-muted-foreground pointer-events-none mt-1 text-center px-2">
+                      PDF, DOC, DOCX, JPG, PNG allowed
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>

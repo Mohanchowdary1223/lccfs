@@ -83,6 +83,23 @@ export function UserNavbar() {
       fetchNotificationCount()
     }
   }, [isLoggedIn, user, fetchNotificationCount])
+
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      // Listen for notification events to update count in real-time
+      const handleNotificationChange = () => {
+        fetchNotificationCount()
+      }
+
+      window.addEventListener('notificationRead', handleNotificationChange)
+      window.addEventListener('newNotification', handleNotificationChange)
+
+      return () => {
+        window.removeEventListener('notificationRead', handleNotificationChange)
+        window.removeEventListener('newNotification', handleNotificationChange)
+      }
+    }
+  }, [isLoggedIn, user, fetchNotificationCount])
   
   const handleProfileClick = () => router.push('/user/profile')
   const handleChatAssistantClick = () => router.push('/user/chatbot')

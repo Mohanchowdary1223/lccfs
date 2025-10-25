@@ -37,7 +37,15 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ userData }) => {
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Joined </span>
-                  {userData.createdAt.toLocaleDateString()}
+                  {new Date(userData.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}, {new Date(userData.createdAt).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })}
                 </div>
               </div>
             </div>

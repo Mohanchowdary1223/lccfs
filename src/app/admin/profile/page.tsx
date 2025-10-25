@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SuccessMessage } from "@/components/ui/success-message"
 import { useSuccessMessage } from "@/components/ui/success-message"
+import { ProfileSkeleton } from '@/components/ui/loading-skeletons'
 
 interface AdminData {
   _id: string
@@ -239,19 +240,7 @@ export default function AdminProfilePage() {
   if (loading) {
     return (
       <div className="p-6 pt-24 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-20 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <ProfileSkeleton />
       </div>
     )
   }
@@ -403,9 +392,11 @@ export default function AdminProfilePage() {
                                   {new Date(adminData.lastLogin).toLocaleDateString('en-US', {
                                     year: 'numeric',
                                     month: 'long',
-                                    day: 'numeric',
+                                    day: 'numeric'
+                                  })}, {new Date(adminData.lastLogin).toLocaleTimeString('en-US', {
                                     hour: '2-digit',
-                                    minute: '2-digit'
+                                    minute: '2-digit',
+                                    hour12: false
                                   })}
                                 </p>
                               </div>
@@ -535,7 +526,15 @@ export default function AdminProfilePage() {
                       <div className="p-4 border rounded-lg bg-muted/50">
                         <h3 className="font-medium mb-2">Password Security</h3>
                         <p className="text-sm text-muted-foreground">
-                          Your password was last changed on {adminData?.createdAt ? new Date(adminData.createdAt).toLocaleDateString() : 'Unknown'}
+                          Your password was last changed on {adminData?.createdAt ? `${new Date(adminData.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}, ${new Date(adminData.createdAt).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })}` : 'Unknown'}
                         </p>
                       </div>
                       <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">

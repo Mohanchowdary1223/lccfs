@@ -81,6 +81,10 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
   // Alert dialog state for scoped deletion
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmScope, setConfirmScope] = useState<'all' | 'chats' | 'files'>('all')
+  
+  // Individual chat deletion state
+  const [pendingDeleteChat, setPendingDeleteChat] = useState<ChatSession | null>(null)
+  const [deletingChat, setDeletingChat] = useState(false)
 
   const openConfirm = (scope: 'all' | 'chats' | 'files') => {
     setConfirmScope(scope)
@@ -116,6 +120,34 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
     }
   }
 
+  const handleDeleteIndividualChat = async () => {
+    if (!pendingDeleteChat) return
+    setDeletingChat(true)
+    setPendingDeleteChat(null)
+
+    try {
+      const userStr = localStorage.getItem('user')
+      const userId = userStr ? JSON.parse(userStr).id || JSON.parse(userStr)._id : ''
+      const response = await fetch(`/api/legalbot?id=${pendingDeleteChat._id}`, { 
+        method: 'DELETE', 
+        headers: { 'x-user-id': userId } 
+      })
+
+      if (response.ok) {
+        window.dispatchEvent(new CustomEvent('chat-deleted'))
+        toast.push('Chat deleted successfully!', 'success', <CheckCircle className="w-5 h-5 text-white" />)
+        window.location.reload()
+      } else {
+        toast.push('Failed to delete chat', 'error')
+      }
+    } catch (err) {
+      console.error('Failed to delete chat', err)
+      toast.push('Failed to delete chat', 'error')
+    } finally {
+      setDeletingChat(false)
+    }
+  }
+
   return (
     <TabsContent value="activity" className="space-y-6">
       <Card>
@@ -144,10 +176,42 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
                     <p className="font-medium truncate">{chat.title}</p>
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-sm text-muted-foreground">
                       <span>{chat.messages?.length || 0} messages</span>
-                      <span className="hidden sm:inline">Created {new Date(chat.createdAt).toLocaleDateString()}</span>
-                      <span className="sm:hidden">Created: {new Date(chat.createdAt).toLocaleDateString()}</span>
-                      <span className="hidden sm:inline">Updated {new Date(chat.updatedAt).toLocaleDateString()}</span>
-                      <span className="sm:hidden">Updated: {new Date(chat.updatedAt).toLocaleDateString()}</span>
+                      <span className="hidden sm:inline">Created {new Date(chat.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}, {new Date(chat.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}</span>
+                      <span className="sm:hidden">Created: {new Date(chat.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}, {new Date(chat.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}</span>
+                      <span className="hidden sm:inline">Updated {new Date(chat.updatedAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}, {new Date(chat.updatedAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}</span>
+                      <span className="sm:hidden">Updated: {new Date(chat.updatedAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}, {new Date(chat.updatedAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}</span>
                     </div>
                   </div>
                 </div>
@@ -197,12 +261,15 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => {
-                    await fetch(`/api/legalbot?id=${chat._id}`, { method: 'DELETE', headers: { 'x-user-id': localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).id || JSON.parse(localStorage.getItem('user')!)._id : '' } })
-                    window.dispatchEvent(new CustomEvent('chat-deleted'))
-                    window.location.reload()
-                  }}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-destructive" 
+                    onClick={() => setPendingDeleteChat(chat)}
+                    disabled={deletingChat}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> 
+                    {deletingChat ? 'Deleting...' : 'Delete'}
                   </Button>
                 </div>
               </motion.div>
@@ -224,7 +291,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
       </Card>
 
       {/* Confirm dialog for clearing */}
-      <AlertDialog open={confirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {confirmScope === 'chats' ? 'all chats' : confirmScope === 'files' ? 'all files' : 'all items'}</AlertDialogTitle>
@@ -234,7 +301,50 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setConfirmOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={performClear} className="ml-2">Delete</AlertDialogAction>
+            <AlertDialogAction onClick={performClear} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm dialog for individual chat deletion */}
+      <AlertDialog open={!!pendingDeleteChat} onOpenChange={() => setPendingDeleteChat(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this chat? This action cannot be undone.
+              {pendingDeleteChat && (
+                <div className="mt-3 p-3 bg-muted/50 rounded text-sm border">
+                  <div className="font-medium mb-1">Chat Details:</div>
+                  <div className="text-muted-foreground">
+                    <div><strong>Title:</strong> {pendingDeleteChat.title || 'Untitled Chat'}</div>
+                    <div><strong>Messages:</strong> {pendingDeleteChat.messages?.length || 0}</div>
+                    <div><strong>Created:</strong> {new Date(pendingDeleteChat.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}, {new Date(pendingDeleteChat.createdAt).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}</div>
+                  </div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingDeleteChat(null)} disabled={deletingChat}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteIndividualChat}
+              disabled={deletingChat}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {deletingChat ? 'Deleting...' : 'Delete Chat'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

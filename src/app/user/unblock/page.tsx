@@ -2,11 +2,21 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Send } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function UnblockPage() {
   const router = useRouter()
@@ -14,6 +24,8 @@ export default function UnblockPage() {
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -102,25 +114,49 @@ export default function UnblockPage() {
     router.replace('/')
   }
 
-  const submitUnblockRequest = async () => {
-    let userId = ''
-    try {
-      const u = blockedUser as Record<string, unknown>
-      userId = (u.id as string) || (u._id as string) || ''
-    } catch {}
-    if (!userId) {
-      try {
-        const u = localStorage.getItem('user')
-        if (u) userId = JSON.parse(u)._id || JSON.parse(u).id || ''
-      } catch {}
+  const handleSubmitRequest = () => {
+    if (!message.trim()) {
+      alert('Please enter a message explaining why you should be unblocked.')
+      return
     }
-    if (!userId) return
-    await fetch('/api/unblock-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, message }),
-    })
-    setSent(true)
+    setShowConfirmDialog(true)
+  }
+
+  const confirmSubmitUnblockRequest = async () => {
+    setSubmitting(true)
+    setShowConfirmDialog(false)
+    
+    try {
+      let userId = ''
+      try {
+        const u = blockedUser as Record<string, unknown>
+        userId = (u.id as string) || (u._id as string) || ''
+      } catch {}
+      if (!userId) {
+        try {
+          const u = localStorage.getItem('user')
+          if (u) userId = JSON.parse(u)._id || JSON.parse(u).id || ''
+        } catch {}
+      }
+      if (!userId) return
+      
+      const response = await fetch('/api/unblock-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, message }),
+      })
+      
+      if (response.ok) {
+        setSent(true)
+      } else {
+        alert('Failed to submit unblock request. Please try again.')
+      }
+    } catch (error) {
+      console.error('Failed to submit unblock request:', error)
+      alert('Failed to submit unblock request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -196,7 +232,7 @@ export default function UnblockPage() {
               className="space-y-2"
               onSubmit={e => {
                 e.preventDefault()
-                submitUnblockRequest()
+                handleSubmitRequest()
               }}
             >
               <textarea
@@ -205,20 +241,23 @@ export default function UnblockPage() {
                 className="w-full border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 min-h-[48px] rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 rows={3}
                 placeholder="Explain why you should be unblocked"
+                disabled={submitting}
               />
               <div className="flex gap-2 justify-end mt-2">
                 <Button
                   type="submit"
                   variant="default"
                   className="bg-primary text-primary-foreground"
+                  disabled={submitting || !message.trim()}
                 >
-                  Send request
+                  {submitting ? 'Sending...' : 'Send Request'}
                 </Button>
                 <Button
                   variant="default"
                   onClick={handleReturnHome}
                   className="bg-primary text-primary-foreground"
                   type="button"
+                  disabled={submitting}
                 >
                   Back to Home
                 </Button>
@@ -227,6 +266,37 @@ export default function UnblockPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Unblock Request Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Submit Unblock Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to submit this unblock request? This will notify the administrators to review your case.
+              <div className="mt-3 p-3 bg-muted/50 rounded text-sm border">
+                <div className="font-medium mb-2">Your message:</div>
+                <div className="text-muted-foreground whitespace-pre-wrap break-words">
+                  {message || 'No message provided'}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowConfirmDialog(false)} disabled={submitting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmSubmitUnblockRequest}
+              disabled={submitting}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {submitting ? 'Sending...' : 'Send Request'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

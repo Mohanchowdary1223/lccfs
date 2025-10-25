@@ -147,7 +147,15 @@ toast.push('File deleted successfully', 'success', <CheckCircle className="w-5 h
                         {file.originalName}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {formatFileSize(file.fileSize)} • {new Date(file.uploadedAt).toLocaleDateString()}
+                        {formatFileSize(file.fileSize)} • {new Date(file.uploadedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}, {new Date(file.uploadedAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false
+                        })}
                       </p>
                     </div>
                   </div>

@@ -1,9 +1,10 @@
 "use client"
 import React, { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useParams, useRouter } from 'next/navigation'
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarTrigger, useSidebar, Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-
+import { motion, AnimatePresence } from "framer-motion"
+import { History, Eye } from 'lucide-react'
 
 import { ChatMessage } from '@/components/chatbot/ChatMessage'
 
@@ -18,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ChatMessageSkeleton } from '@/components/ui/loading-skeletons'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { SuccessMessage } from "@/components/ui/success-message";
 import { useSuccessMessage } from "@/components/ui/success-message";
@@ -38,8 +40,14 @@ const AdminChatViewContent: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [reporting, setReporting] = useState(false)
   const [showReportDialog, setShowReportDialog] = useState(false)
+  const [showHistoryPopup, setShowHistoryPopup] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const historyButtonRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const { open, openMobile, isMobile, setOpen, setOpenMobile } = useSidebar()
 
   const scrollToBottom = () => { 
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" }) 
@@ -77,6 +85,8 @@ const AdminChatViewContent: React.FC = () => {
 
   const handleContinueChat = (chat: ChatSession) => {
     router.push(`/admin/chat/${chat._id}?userId=${userId}`)
+    if (isMobile) setOpenMobile(false)
+    else setOpen(false)
   }
 
   const handleReport = () => {
@@ -117,168 +127,379 @@ const AdminChatViewContent: React.FC = () => {
     }
   }
 
+  // Hover handlers for floating popup
+  const handleMouseEnterHistory = () => {
+    if (!open && !isMobile) {
+      if (hoverTimeoutRef.current)
+        clearTimeout(hoverTimeoutRef.current)
+      setShowHistoryPopup(true)
+    }
+  }
+  const handleMouseLeaveHistory = () => {
+    if (!open && !isMobile) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setShowHistoryPopup(false)
+      }, 100)
+    }
+  }
+  const handleMouseEnterPopup = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+  }
+  const handleMouseLeavePopup = () => {
+    if (!open && !isMobile) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setShowHistoryPopup(false)
+      }, 100)
+    }
+  }
+  const handleHistoryClick = () => {
+    if (!open && !isMobile) {
+      setOpen(true)
+      setShowHistoryPopup(false)
+    }
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => { if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current) }
+  }, [])
+
+  // Hide popup when sidebar opens
+  useEffect(() => { if (open) setShowHistoryPopup(false) }, [open])
+
   return (
-    <div className="flex h-screen w-full bg-background overflow-hidden">
-      <SuccessMessage
-        show={show}
-        message={message}
-        type={type}
-        onClose={hideMessage}
-      />
-      {/* Admin Sidebar - Simplified */}
-      <div className="w-[280px] border-r pt-20 bg-background flex flex-col h-full flex-shrink-0">
-        <div className="border-b bg-muted/20 p-4 flex-shrink-0">
-          <h3 className="font-semibold text-sm text-foreground">User Chat History</h3>
-          <p className="text-xs text-muted-foreground mt-1">Read-only admin view</p>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {chatHistory.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No chat history</div>
-          ) : (
-            chatHistory.map((chat) => (
-              <div
-                key={chat._id}
-                className={`group flex items-center p-3 rounded-lg hover:bg-muted/60 transition cursor-pointer border mb-2 ${
-                  currentChat?._id === chat._id ? 'bg-primary/10 border-primary/20' : 'bg-card border-border'
-                }`}
-                onClick={() => handleContinueChat(chat)}
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3">
-                  <span className="text-sm font-bold text-primary-foreground">
-                    {chat.title?.[0]?.toUpperCase() || "#"}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground truncate">{chat.title}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {chat.messages?.length || 0} messages • {new Date(chat.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+    <TooltipProvider>
+      <div className="flex h-screen w-full overflow-hidden">
+        <SuccessMessage
+          show={show}
+          message={message}
+          type={type}
+          onClose={hideMessage}
+        />
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0 w-full">
-        {/* Chat Messages - Chatbot Style */}
-        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/20 w-full" ref={scrollContainerRef}>
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading chat...</p>
-              </div>
-            </div>
-          ) : !currentChat ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-muted-foreground">Select a chat from the sidebar to view</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center w-full px-2 sm:px-4">
-              <div className="w-full max-w-2xl pb-5 pt-20">
-                {currentChat.messages.map((message: Message, index: number) => (
-                  <div key={message.id || index} className="mb-6">
-                    <ChatMessage
-                      message={message}
-                      index={index}
-                      typingMessageId={null}
-                      onTypingComplete={() => {}}
-                      readOnly={true}
-                    />
+        {/* Admin Chat Sidebar */}
+        <motion.div
+          initial={{ x: -280 }}
+          animate={{ x: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+          <Sidebar
+            side="left"
+            variant="sidebar"
+            collapsible="icon"
+            className="fixed left-0 top-16 bottom-0 z-50 w-[280px] border-r bg-background transition-all duration-200 ease-in-out"
+          >
+            <SidebarHeader className="border-b bg-muted/20">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  {(isMobile ? openMobile : open) ? (
+                    <div className="flex w-full items-center justify-between p-3">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-sm text-foreground">Admin Chat View</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!isMobile && (
+                          <motion.div
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <SidebarTrigger className="h-8 w-8 cursor-pointer" />
+                          </motion.div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex w-full items-center justify-center p-3">
+                      {!isMobile && (
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <SidebarTrigger className="h-8 w-8 cursor-pointer" />
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarHeader>
+            <SidebarContent className="flex-1 overflow-hidden">
+              <SidebarMenu className="px-2 py-2 space-y-1">
+                {/* History Header */}
+                <SidebarMenuItem>
+                  <div
+                    ref={historyButtonRef}
+                    onMouseEnter={handleMouseEnterHistory}
+                    onMouseLeave={handleMouseLeaveHistory}
+                  >
+                    <motion.div whileHover={{ scale: open ? 1.02 : 1.1, x: open ? 4 : 0 }} whileTap={{ scale: 0.98 }}>
+                      <SidebarMenuButton 
+                        className="w-full text-foreground cursor-pointer justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8"
+                        tooltip="User Chat History"
+                        onClick={handleHistoryClick}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <History className="size-4 text-foreground shrink-0" />
+                            <span className="text-foreground group-data-[collapsible=icon]:sr-only">User Chat History</span>
+                          </div>
+                        </div>
+                      </SidebarMenuButton>
+                    </motion.div>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 shadow-sm w-full">
-          <div className="w-full mx-auto">
-            <div className="flex items-center justify-between gap-4 mb-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push('/admin/users/' + userId)}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to User Details
-              </Button>
-              {currentChat && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReport}
-                  disabled={reporting}
-                  className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                </SidebarMenuItem>
+              </SidebarMenu>
+              {/* Chat History List (when sidebar is open) */}
+              {(isMobile ? openMobile : open) && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                  className="flex-1 overflow-y-auto px-2 pb-20"
                 >
-                  <AlertCircle className="h-4 w-4" />
-                  {reporting ? 'Reporting...' : 'Report Chat'}
-                </Button>
+                  <div className="text-xs text-muted-foreground px-3 pb-2">Read-only admin view</div>
+                  <SidebarMenu>
+                    {chatHistory.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">No chat history</div>
+                    ) : (
+                      chatHistory.map((chat, index) => (
+                        <motion.div key={chat._id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <SidebarMenuItem>
+                            <div className={`group flex w-full items-center p-3 rounded-lg hover:bg-muted/60 transition relative shadow-sm border mb-2 cursor-pointer ${
+                              currentChat?._id === chat._id ? 'bg-primary/10 border-primary/20' : 'bg-card border-border'
+                            }`} style={{ minHeight: 60 }} onClick={() => handleContinueChat(chat)}>
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3">
+                                <span className="text-base font-bold text-primary-foreground">
+                                  {chat.title?.[0]?.toUpperCase() || "#"}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-foreground truncate">{chat.title}</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {chat.messages?.length || 0} messages • {new Date(chat.createdAt).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}, {new Date(chat.createdAt).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </SidebarMenuItem>
+                        </motion.div>
+                      ))
+                    )}
+                  </SidebarMenu>
+                </motion.div>
               )}
+            </SidebarContent>
+          </Sidebar>
+        </motion.div>
+
+        {/* Main Chat Area */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="fixed top-16 bottom-0 right-0 z-40 flex flex-col bg-background"
+          style={{
+            left: isMobile ? (openMobile ? '280px' : '0') : (open ? '280px' : '64px'),
+            transition: 'left 0.2s ease-in-out',
+            borderLeft: isMobile ? 'none' : open ? '1px solid hsl(var(--border))' : '1px solid hsl(var(--border))'
+          }}
+        >
+          {/* Mobile Sidebar Trigger */}
+          {isMobile && !openMobile && (
+            <div className="absolute top-4 left-4 z-50">
+              <SidebarTrigger 
+                className="md:hidden bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg rounded-md p-2"
+                aria-label="Open sidebar"
+              />
             </div>
-            <div className="text-center text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-              👁️ <strong>Admin View</strong> - Read Only • Cannot send messages or modify chat
-              {currentChat && (
-                <div className="mt-1 text-xs">
-                  {currentChat.title} • {currentChat.messages?.length || 0} messages
+          )}
+          
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/20 w-full" ref={scrollContainerRef}>
+            {loading ? (
+              <div className="flex flex-col items-center w-full px-2 sm:px-4">
+                <div className="w-full max-w-2xl pb-5 pt-5">
+                  <ChatMessageSkeleton />
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Report Confirmation Dialog */}
-      <AlertDialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Report Inappropriate Activity</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to report this chat for inappropriate content? 
-              This action will send a professional notification to the user about their inappropriate activity.
-            </AlertDialogDescription>
-            {currentChat && (
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg text-sm border">
-                <div className="font-medium text-foreground mb-2">Chat Information:</div>
-                <div className="space-y-1 text-muted-foreground">
-                  <div><strong>Chat:</strong> {currentChat.title || 'Untitled Chat'}</div>
-                  <div><strong>Messages:</strong> {currentChat.messages?.length || 0}</div>
+              </div>
+            ) : !currentChat ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-muted-foreground">Select a chat from the sidebar to view</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center w-full px-2 sm:px-4">
+                <div className="w-full max-w-2xl pb-5 pt-5">
+                  {currentChat.messages.map((message: Message, index: number) => (
+                    <div key={message.id || index} className="mb-6">
+                      <ChatMessage
+                        message={message}
+                        index={index}
+                        typingMessageId={null}
+                        onTypingComplete={() => {}}
+                        readOnly={true}
+                      />
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
                 </div>
               </div>
             )}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowReportDialog(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmReport}
-              className="bg-red-600 hover:bg-red-700 text-white"
+          </div>
+
+          {/* Footer */}
+          <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 shadow-sm w-full">
+            <div className="w-full mx-auto">
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/admin/users/' + userId)}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to User Details
+                </Button>
+                {currentChat && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReport}
+                    disabled={reporting}
+                    className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    {reporting ? 'Reporting...' : 'Report Chat'}
+                  </Button>
+                )}
+              </div>
+              <div className="text-center text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+                👁️ <strong>Admin View</strong> - Read Only • Cannot send messages or modify chat
+                {currentChat && (
+                  <div className="mt-1 text-xs">
+                    {currentChat.title} • {currentChat.messages?.length || 0} messages
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        
+        {/* Floating History Popup (when sidebar is collapsed) */}
+        <AnimatePresence>
+          {showHistoryPopup && !open && !isMobile && (
+            <motion.div
+              ref={popupRef}
+              initial={{ opacity: 0, x: -20, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -20, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="fixed left-16 top-[180px] z-[60] w-[280px] max-h-[calc(100vh-200px)] overflow-hidden rounded-lg border bg-background shadow-2xl"
+              onMouseEnter={handleMouseEnterPopup}
+              onMouseLeave={handleMouseLeavePopup}
             >
-              Send Report
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <div className="border-b px-4 py-3 bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm text-foreground">Admin Chat View</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">User Chat History</p>
+              </div>
+              <div className="overflow-y-auto max-h-[calc(100vh-260px)] p-2">
+                {chatHistory.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    No chat history yet
+                  </div>
+                ) : (
+                  chatHistory.map((chat) => (
+                    <div
+                      key={chat._id}
+                      className={`group flex items-center p-3 rounded-lg hover:bg-muted/80 transition relative shadow-sm border mb-2 cursor-pointer ${
+                        currentChat?._id === chat._id ? 'bg-primary/10 border-primary/20' : 'bg-background border-border'
+                      }`}
+                      style={{ minHeight: 60 }}
+                      onClick={() => { handleContinueChat(chat); setShowHistoryPopup(false); }}
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3">
+                        <span className="text-base font-bold text-primary-foreground">
+                          {chat.title?.[0]?.toUpperCase() || "#"}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-foreground truncate">{chat.title}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {chat.messages?.length || 0} messages • {new Date(chat.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}, {new Date(chat.createdAt).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Report Confirmation Dialog */}
+        <AlertDialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Report Inappropriate Activity</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to report this chat for inappropriate content? 
+                This action will send a professional notification to the user about their inappropriate activity.
+              </AlertDialogDescription>
+              {currentChat && (
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg text-sm border">
+                  <div className="font-medium text-foreground mb-2">Chat Information:</div>
+                  <div className="space-y-1 text-muted-foreground">
+                    <div><strong>Chat:</strong> {currentChat.title || 'Untitled Chat'}</div>
+                    <div><strong>Messages:</strong> {currentChat.messages?.length || 0}</div>
+                  </div>
+                </div>
+              )}
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowReportDialog(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmReport}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Send Report
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   )
 }
 
 export default function AdminChatViewPage() {
   return (
     <div className="fixed top-16 bottom-0 left-0 right-0 overflow-hidden">
-      <TooltipProvider>
-        <SidebarProvider>
-          <AdminChatViewContent />
-        </SidebarProvider>
-      </TooltipProvider>
+      <SidebarProvider defaultOpen={false}>
+        <AdminChatViewContent />
+      </SidebarProvider>
     </div>
   )
 }

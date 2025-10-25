@@ -19,6 +19,7 @@ import {
   updateLocalStorageUser,
   clearUserData
 } from '@/components/profile'
+import { ProfileSkeleton } from '@/components/ui/loading-skeletons'
 
 export default function UserProfilePage() {
   const [userData, setUserData] = useState<UserData | null>(null)
@@ -270,12 +271,10 @@ export default function UserProfilePage() {
 
   if (loading && !userData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center pt-20">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1 }}
-          className="h-8 w-8 rounded-full border-2 border-muted border-t-primary"
-        />
+      <div className="min-h-screen bg-background pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <ProfileSkeleton />
+        </div>
       </div>
     )
   }

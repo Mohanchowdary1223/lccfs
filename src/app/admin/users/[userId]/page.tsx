@@ -181,7 +181,15 @@ export default function AdminUserDetailsPage() {
                         </div>
                         <div>
                           <p className="font-medium">Joined</p>
-                          <p className="text-sm text-muted-foreground">{userData.createdAt.toLocaleDateString()}</p>
+                          <p className="text-sm text-muted-foreground">{new Date(userData.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}, {new Date(userData.createdAt).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })}</p>
                         </div>
                         <div className="pt-4 border-t">
                           <Button

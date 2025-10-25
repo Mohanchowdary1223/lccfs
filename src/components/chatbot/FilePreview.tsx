@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Download, FileText, Image as ImageIcon, File } from 'lucide-react'
 import * as mammoth from 'mammoth'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface FilePreviewProps {
   isOpen: boolean
@@ -138,9 +139,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-2">Loading file...</span>
+        <div className="h-64 space-y-4 p-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-6 w-6 rounded" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-48 w-full" />
         </div>
       )
     }

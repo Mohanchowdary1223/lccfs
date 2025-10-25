@@ -334,7 +334,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <span className="text-gray-900/80 dark:text-white">
                     {(() => {
                       const t = typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp;
-                      return t && typeof t.toLocaleTimeString === 'function' ? t.toLocaleTimeString() : '';
+                      return t && !isNaN(t.getTime()) ? t.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      }) : '';
                     })()}
                   </span>
                   {showEditIcon && onEdit && !isEditing && (

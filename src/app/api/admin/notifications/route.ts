@@ -54,6 +54,19 @@ export async function PATCH(request: Request) {
     const client = await clientPromise
     const db = client.db('legal_compliance_chatbot')
 
+    if (action === 'mark-read') {
+      const result = await db.collection('notifications').updateOne(
+        { _id: new ObjectId(notificationId) },
+        { $set: { read: true } }
+      )
+      
+      if (result.matchedCount === 1) {
+        return NextResponse.json({ message: 'Marked as read', success: true })
+      } else {
+        return NextResponse.json({ message: 'Notification not found', success: false }, { status: 404 })
+      }
+    }
+
     if (action === 'delete') {
       console.log('Attempting to delete notification:', notificationId)
       const result = await db.collection('notifications').deleteOne({ _id: new ObjectId(notificationId) })

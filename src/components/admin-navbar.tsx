@@ -11,14 +11,16 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { User, LogOut, ShieldUser, Scale, Menu, Bell, Users, UserX } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { Badge } from '@/components/ui/badge'
 
 export function AdminNavbar() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState<{ name?: string; email?: string } | null>(null)
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -48,6 +50,46 @@ export function AdminNavbar() {
     window.addEventListener('tokenChange', handleTokenChange)
     return () => window.removeEventListener('tokenChange', handleTokenChange)
   }, [])
+
+  const fetchNotificationCount = useCallback(async () => {
+    if (!isLoggedIn) return
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/admin/notifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const unreadCount = data.notifications?.filter((n: { read: boolean }) => !n.read)?.length || 0
+        setNotificationCount(unreadCount)
+      }
+    } catch (error) {
+      console.error('Failed to fetch admin notifications:', error)
+    }
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNotificationCount()
+    }
+  }, [isLoggedIn, fetchNotificationCount])
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      // Listen for notification events to update count in real-time
+      const handleNotificationChange = () => {
+        fetchNotificationCount()
+      }
+
+      window.addEventListener('notificationRead', handleNotificationChange)
+      window.addEventListener('newNotification', handleNotificationChange)
+
+      return () => {
+        window.removeEventListener('notificationRead', handleNotificationChange)
+        window.removeEventListener('newNotification', handleNotificationChange)
+      }
+    }
+  }, [isLoggedIn, fetchNotificationCount])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -96,8 +138,13 @@ export function AdminNavbar() {
             <Button variant="ghost" onClick={() => router.push('/admin/blocked')} className="cursor-pointer text-sm font-medium hover:text-primary">
               <UserX className="mr-2 h-4 w-4" />Blocked
             </Button>
-            <Button variant="ghost" onClick={() => router.push('/admin/notifications')} className="cursor-pointer text-sm font-medium hover:text-primary">
+            <Button variant="ghost" onClick={() => router.push('/admin/notifications')} className="cursor-pointer text-sm font-medium hover:text-primary relative">
               <Bell className="mr-2 h-4 w-4" />Notifications
+              {notificationCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </Badge>
+              )}
             </Button>
           </div>
           {/* Theme toggle always shown */}
@@ -114,7 +161,14 @@ export function AdminNavbar() {
                 <DropdownMenuItem onClick={() => router.push('/admin/dashboard')}><ShieldUser className="mr-2 h-4 w-4" />Dashboard</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/admin/users')}><Users className="mr-2 h-4 w-4" />Users</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/admin/blocked')}><UserX className="mr-2 h-4 w-4" />Blocked</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/admin/notifications')}><Bell className="mr-2 h-4 w-4" />Notifications</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/admin/notifications')} className="relative">
+                  <Bell className="mr-2 h-4 w-4" />Notifications
+                  {notificationCount > 0 && (
+                    <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs">
+                      {notificationCount > 99 ? '99+' : notificationCount}
+                    </Badge>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {isLoggedIn && (
                   <>

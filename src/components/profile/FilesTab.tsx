@@ -172,7 +172,15 @@ export const FilesTab: React.FC<FilesTabProps> = ({ uploadedFiles, onFilesReload
                   </p>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mt-1">
                     <span>{formatFileSize(file.fileSize)}</span>
-                    <span>Uploaded {new Date(file.uploadedAt).toLocaleDateString()}</span>
+                    <span>Uploaded {new Date(file.uploadedAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}, {new Date(file.uploadedAt).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}</span>
                     <span className="px-2 py-1 bg-secondary rounded text-xs uppercase">
                       {file.fileType}
                     </span>

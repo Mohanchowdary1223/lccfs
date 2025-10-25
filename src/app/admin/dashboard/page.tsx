@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { StatsSkeleton, TableSkeleton } from '@/components/ui/loading-skeletons'
 
 const DashboardPage = () => {
   const [stats, setStats] = useState<Record<string, number> | null>(null)
@@ -20,7 +21,18 @@ const DashboardPage = () => {
     }).catch(e => console.error(e)).finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="p-8">Loading...</div>
+  if (loading) {
+    return (
+      <div className="p-6 pt-24">
+        <div className="h-8 w-48 bg-accent animate-pulse rounded-md mb-6" />
+        <StatsSkeleton />
+        <div className="mt-6 space-y-4">
+          <div className="h-6 w-32 bg-accent animate-pulse rounded-md" />
+          <TableSkeleton rows={5} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 pt-24">
@@ -96,7 +108,15 @@ const DashboardPage = () => {
                 <div className="font-medium">{u.name}</div>
                 <div className="text-sm text-muted-foreground">{u.email}</div>
               </div>
-              <div className="text-sm text-muted-foreground">{u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</div>
+              <div className="text-sm text-muted-foreground">{u.createdAt ? `${new Date(u.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })}, ${new Date(u.createdAt).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              })}` : ''}</div>
             </div>
           ))}
         </div>

@@ -313,25 +313,25 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ chatHistory, uploadedF
             <AlertDialogTitle>Delete Chat</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this chat? This action cannot be undone.
-              {pendingDeleteChat && (
-                <div className="mt-3 p-3 bg-muted/50 rounded text-sm border">
-                  <div className="font-medium mb-1">Chat Details:</div>
-                  <div className="text-muted-foreground">
-                    <div><strong>Title:</strong> {pendingDeleteChat.title || 'Untitled Chat'}</div>
-                    <div><strong>Messages:</strong> {pendingDeleteChat.messages?.length || 0}</div>
-                    <div><strong>Created:</strong> {new Date(pendingDeleteChat.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}, {new Date(pendingDeleteChat.createdAt).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
-                    })}</div>
-                  </div>
-                </div>
-              )}
             </AlertDialogDescription>
+            {pendingDeleteChat && (
+              <div className="mt-3 p-3 bg-muted/50 rounded text-sm border">
+                <div className="font-medium mb-1">Chat Details:</div>
+                <div className="text-muted-foreground">
+                  <div><strong>Title:</strong> {pendingDeleteChat.title || 'Untitled Chat'}</div>
+                  <div><strong>Messages:</strong> {pendingDeleteChat.messages?.length || 0}</div>
+                  <div><strong>Created:</strong> {new Date(pendingDeleteChat.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}, {new Date(pendingDeleteChat.createdAt).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })}</div>
+                </div>
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingDeleteChat(null)} disabled={deletingChat}>

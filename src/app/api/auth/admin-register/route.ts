@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
-import { hashPassword } from '@/lib/auth'
+import { hashPassword, generateToken } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,9 +40,23 @@ export async function POST(request: NextRequest) {
 
     const result = await db.collection('admins').insertOne(newAdmin)
 
+    // Generate token for automatic login
+    const token = generateToken({
+      userId: result.insertedId,
+      email: email,
+      role: 'admin',
+    })
+
     return NextResponse.json({
       message: 'Admin registered successfully',
-      adminId: result.insertedId,
+      token,
+      role: 'admin',
+      user: {
+        id: result.insertedId,
+        name,
+        email,
+        role: 'admin',
+      },
     }, { status: 201 })
   } catch (error) {
     console.error('Admin registration error:', error)

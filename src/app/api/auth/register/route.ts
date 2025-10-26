@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
-import { hashPassword } from '@/lib/auth'
+import { hashPassword, generateToken } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,9 +40,23 @@ export async function POST(request: NextRequest) {
 
     const result = await db.collection('users').insertOne(newUser)
 
+    // Generate token for automatic login
+    const token = generateToken({
+      userId: result.insertedId,
+      email: email,
+      role: 'user',
+    })
+
     return NextResponse.json({
       message: 'User registered successfully',
-      userId: result.insertedId,
+      token,
+      role: 'user',
+      user: {
+        id: result.insertedId,
+        name,
+        email,
+        role: 'user',
+      },
     }, { status: 201 })
   } catch (error) {
     console.error('Registration error:', error)

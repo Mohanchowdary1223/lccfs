@@ -178,12 +178,12 @@ export default function UsersPage() {
             <AlertDialogTitle className="text-base sm:text-lg">Block User</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
               Are you sure you want to block this user? They will be unable to access the application until unblocked.
-              {pendingBlock && (
-                <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
-                  <strong>User:</strong> {pendingBlock.name} ({pendingBlock.email})
-                </div>
-              )}
             </AlertDialogDescription>
+            {pendingBlock && (
+              <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
+                <strong>User:</strong> {pendingBlock.name} ({pendingBlock.email})
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => setPendingBlock(null)} className="w-full sm:w-auto">
@@ -212,12 +212,12 @@ export default function UsersPage() {
             <AlertDialogTitle className="text-base sm:text-lg">Unblock User</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
               Are you sure you want to unblock this user? They will regain access to the application.
-              {pendingUnblock && (
-                <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
-                  <strong>User:</strong> {pendingUnblock.name} ({pendingUnblock.email})
-                </div>
-              )}
             </AlertDialogDescription>
+            {pendingUnblock && (
+              <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
+                <strong>User:</strong> {pendingUnblock.name} ({pendingUnblock.email})
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => setPendingUnblock(null)} className="w-full sm:w-auto">
@@ -246,15 +246,15 @@ export default function UsersPage() {
             <AlertDialogTitle className="text-base sm:text-lg">Deactivate User</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
               Are you sure you want to permanently delete this user and all their data? This action cannot be undone.
-              {pendingDeactivate && (
-                <div className="mt-2 p-2 bg-destructive/10 rounded text-sm border border-destructive/20">
-                  <strong>User:</strong> {pendingDeactivate.name} ({pendingDeactivate.email})
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    This will permanently delete {pendingDeactivate.chatCount || 0} chats and {pendingDeactivate.fileCount || 0} uploaded files.
-                  </div>
-                </div>
-              )}
             </AlertDialogDescription>
+            {pendingDeactivate && (
+              <div className="mt-2 p-2 bg-destructive/10 rounded text-sm border border-destructive/20">
+                <strong>User:</strong> {pendingDeactivate.name} ({pendingDeactivate.email})
+                <div className="mt-1 text-xs text-muted-foreground">
+                  This will permanently delete {pendingDeactivate.chatCount || 0} chats and {pendingDeactivate.fileCount || 0} uploaded files.
+                </div>
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => setPendingDeactivate(null)} className="w-full sm:w-auto">

@@ -46,10 +46,15 @@ export default function AdminRegisterPage() {
       const data = await response.json()
 
       if (response.ok) {
-        showMessage('🎉 Admin account created successfully! Redirecting to login...', 'success')
+        // Store token and user data for automatic login
+        localStorage.setItem('token', data.token)
+        if (data.user) localStorage.setItem('user', JSON.stringify(data.user))
+        
+        showMessage('🎉 Admin account created successfully! Redirecting...', 'success')
         setTimeout(() => {
-          router.push('/auth/login')
-        }, 2000)
+          // Redirect to admin dashboard instead of login page
+          router.push('/admin/dashboard')
+        }, 1500)
       } else {
         showMessage(data.message || 'Registration failed', 'error')
       }

@@ -187,28 +187,31 @@ const AdminChatViewContent: React.FC = () => {
             side="left"
             variant="sidebar"
             collapsible="icon"
-            className="fixed left-0 top-16 bottom-0 z-50 w-[280px] border-r bg-background transition-all duration-200 ease-in-out"
+            className="fixed left-0 top-16 bottom-0 z-50 w-[280px] border-r bg-background/95 backdrop-blur-md transition-all duration-300 ease-out shadow-xl"
           >
-            <SidebarHeader className="border-b bg-muted/20">
+            <SidebarHeader className="border-b bg-gradient-to-r from-muted/30 to-muted/10 backdrop-blur-sm">
               <SidebarMenu>
                 <SidebarMenuItem>
                   {(isMobile ? openMobile : open) ? (
-                    <div className="flex w-full items-center justify-between p-3">
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex w-full items-center justify-between p-3"
+                    >
                       <div className="flex items-center gap-2">
                         <Eye className="h-4 w-4 text-primary" />
                         <span className="font-semibold text-sm text-foreground">Admin Chat View</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {!isMobile && (
-                          <motion.div
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <SidebarTrigger className="h-8 w-8 cursor-pointer" />
-                          </motion.div>
-                        )}
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <SidebarTrigger className="h-8 w-8 cursor-pointer hover:bg-muted/60 rounded-md transition-colors" aria-label="Close sidebar" />
+                        </motion.div>
                       </div>
-                    </div>
+                    </motion.div>
                   ) : (
                     <div className="flex w-full items-center justify-center p-3">
                       {!isMobile && (
@@ -216,7 +219,7 @@ const AdminChatViewContent: React.FC = () => {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <SidebarTrigger className="h-8 w-8 cursor-pointer" />
+                          <SidebarTrigger className="h-8 w-8 cursor-pointer hover:bg-muted/60 rounded-md transition-colors" aria-label="Expand sidebar" />
                         </motion.div>
                       )}
                     </div>
@@ -233,16 +236,22 @@ const AdminChatViewContent: React.FC = () => {
                     onMouseEnter={handleMouseEnterHistory}
                     onMouseLeave={handleMouseLeaveHistory}
                   >
-                    <motion.div whileHover={{ scale: open ? 1.02 : 1.1, x: open ? 4 : 0 }} whileTap={{ scale: 0.98 }}>
+                    <motion.div 
+                      whileHover={{ scale: open ? 1.02 : 1.1, x: open ? 4 : 0 }} 
+                      whileTap={{ scale: 0.98 }}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
                       <SidebarMenuButton 
-                        className="w-full text-foreground cursor-pointer justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8"
+                        className="w-full text-foreground cursor-pointer justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 hover:bg-muted/60 rounded-lg transition-all duration-200"
                         tooltip="User Chat History"
                         onClick={handleHistoryClick}
                       >
                         <div className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-2">
-                            <History className="size-4 text-foreground shrink-0" />
-                            <span className="text-foreground group-data-[collapsible=icon]:sr-only">User Chat History</span>
+                            <History className="size-4 text-primary shrink-0" />
+                            <span className="text-foreground group-data-[collapsible=icon]:sr-only font-medium">User Chat History</span>
                           </div>
                         </div>
                       </SidebarMenuButton>
@@ -252,32 +261,62 @@ const AdminChatViewContent: React.FC = () => {
               </SidebarMenu>
               {/* Chat History List (when sidebar is open) */}
               {(isMobile ? openMobile : open) && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
                   className="flex-1 overflow-y-auto px-2 pb-20"
                 >
-                  <div className="text-xs text-muted-foreground px-3 pb-2">Read-only admin view</div>
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-xs text-muted-foreground px-3 pb-2 bg-muted/20 rounded-md mb-2 p-2"
+                  >
+                    👁️ Read-only admin view
+                  </motion.div>
                   <SidebarMenu>
                     {chatHistory.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-muted-foreground">No chat history</div>
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
+                        No chat history
+                      </motion.div>
                     ) : (
                       chatHistory.map((chat, index) => (
                         <motion.div key={chat._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
+                          initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          transition={{ 
+                            delay: index * 0.05, 
+                            duration: 0.3,
+                            ease: "easeOut"
+                          }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                         >
                           <SidebarMenuItem>
-                            <div className={`group flex w-full items-center p-3 rounded-lg hover:bg-muted/60 transition relative shadow-sm border mb-2 cursor-pointer ${
-                              currentChat?._id === chat._id ? 'bg-primary/10 border-primary/20' : 'bg-card border-border'
+                            <div className={`group flex w-full items-center p-3 rounded-xl hover:bg-gradient-to-r transition-all duration-200 relative shadow-sm backdrop-blur-sm border mb-2 cursor-pointer ${
+                              currentChat?._id === chat._id 
+                                ? 'bg-primary/10 border-primary/30 hover:from-primary/15 hover:to-primary/5 shadow-md' 
+                                : 'bg-card/50 border-border/50 hover:from-muted/40 hover:to-muted/20 hover:shadow-md hover:border-primary/20'
                             }`} style={{ minHeight: 60 }} onClick={() => handleContinueChat(chat)}>
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3">
-                                <span className="text-base font-bold text-primary-foreground">
+                              <motion.div 
+                                className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 mr-3 shadow-md"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <span className="text-sm font-bold text-primary-foreground">
                                   {chat.title?.[0]?.toUpperCase() || "#"}
                                 </span>
-                              </div>
+                              </motion.div>
                               <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-foreground truncate">{chat.title}</div>
-                                <div className="text-xs text-muted-foreground truncate">
+                                <div className="font-semibold text-foreground truncate text-sm">{chat.title}</div>
+                                <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                                  <Eye className="h-3 w-3" />
                                   {chat.messages?.length || 0} messages • {new Date(chat.createdAt).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
@@ -301,6 +340,17 @@ const AdminChatViewContent: React.FC = () => {
           </Sidebar>
         </motion.div>
 
+        {/* Mobile Sidebar Overlay */}
+        {isMobile && openMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 top-16 bg-black/20 backdrop-blur-sm z-30"
+            onClick={() => setOpenMobile(false)}
+          />
+        )}
+
         {/* Main Chat Area */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -308,19 +358,24 @@ const AdminChatViewContent: React.FC = () => {
           transition={{ delay: 0.2 }}
           className="fixed top-16 bottom-0 right-0 z-40 flex flex-col bg-background"
           style={{
-            left: isMobile ? (openMobile ? '280px' : '0') : (open ? '280px' : '64px'),
-            transition: 'left 0.2s ease-in-out',
+            left: isMobile ? '0' : (open ? '280px' : '64px'),
+            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             borderLeft: isMobile ? 'none' : open ? '1px solid hsl(var(--border))' : '1px solid hsl(var(--border))'
           }}
         >
-          {/* Mobile Sidebar Trigger */}
+          {/* Mobile Sidebar Trigger - Only show when sidebar is closed */}
           {isMobile && !openMobile && (
-            <div className="absolute top-4 left-4 z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="fixed top-20 left-4 z-50"
+            >
               <SidebarTrigger 
-                className="md:hidden bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg rounded-md p-2"
-                aria-label="Open sidebar"
+                className="md:hidden bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-95 border-2 border-primary-foreground/20"
+                aria-label="Open admin chat history"
               />
-            </div>
+            </motion.div>
           )}
           
           {/* Chat Messages */}
@@ -395,49 +450,69 @@ const AdminChatViewContent: React.FC = () => {
           </div>
         </motion.div>
         
-        {/* Floating History Popup (when sidebar is collapsed) */}
+        {/* Enhanced Floating History Popup (when sidebar is collapsed) */}
         <AnimatePresence>
           {showHistoryPopup && !open && !isMobile && (
             <motion.div
               ref={popupRef}
-              initial={{ opacity: 0, x: -20, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -20, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="fixed left-16 top-[180px] z-[60] w-[280px] max-h-[calc(100vh-200px)] overflow-hidden rounded-lg border bg-background shadow-2xl"
+              initial={{ opacity: 0, x: -20, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, x: 0, scale: 1, y: 0 }}
+              exit={{ opacity: 0, x: -20, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="fixed left-16 top-[180px] z-[60] w-[320px] max-h-[calc(100vh-200px)] overflow-hidden rounded-xl border bg-background/95 backdrop-blur-xl shadow-2xl border-border/50"
               onMouseEnter={handleMouseEnterPopup}
               onMouseLeave={handleMouseLeavePopup}
             >
-              <div className="border-b px-4 py-3 bg-muted/50">
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="border-b px-4 py-3 bg-gradient-to-r from-muted/40 to-muted/20"
+              >
                 <div className="flex items-center gap-2">
                   <Eye className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm text-foreground">Admin Chat View</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">User Chat History</p>
-              </div>
-              <div className="overflow-y-auto max-h-[calc(100vh-260px)] p-2">
+                <p className="text-xs text-muted-foreground mt-1">👁️ User Chat History</p>
+              </motion.div>
+              <div className="overflow-y-auto max-h-[calc(100vh-260px)] p-3">
                 {chatHistory.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
+                  >
                     No chat history yet
-                  </div>
+                  </motion.div>
                 ) : (
-                  chatHistory.map((chat) => (
-                    <div
+                  chatHistory.map((chat, index) => (
+                    <motion.div
                       key={chat._id}
-                      className={`group flex items-center p-3 rounded-lg hover:bg-muted/80 transition relative shadow-sm border mb-2 cursor-pointer ${
-                        currentChat?._id === chat._id ? 'bg-primary/10 border-primary/20' : 'bg-background border-border'
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 + 0.2 }}
+                      className={`group flex items-center p-3 rounded-xl hover:bg-gradient-to-r transition-all duration-200 relative shadow-sm bg-card/50 backdrop-blur-sm border mb-2 cursor-pointer ${
+                        currentChat?._id === chat._id 
+                          ? 'bg-primary/10 border-primary/30 hover:from-primary/15 hover:to-primary/5 shadow-md' 
+                          : 'border-border/30 hover:from-muted/60 hover:to-muted/40 hover:shadow-md hover:border-primary/20'
                       }`}
                       style={{ minHeight: 60 }}
                       onClick={() => { handleContinueChat(chat); setShowHistoryPopup(false); }}
+                      whileHover={{ scale: 1.02 }}
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary mr-3">
-                        <span className="text-base font-bold text-primary-foreground">
+                      <motion.div 
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 mr-3 shadow-md"
+                        whileHover={{ scale: 1.1 }}
+                      >
+                        <span className="text-sm font-bold text-primary-foreground">
                           {chat.title?.[0]?.toUpperCase() || "#"}
                         </span>
-                      </div>
+                      </motion.div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-foreground truncate">{chat.title}</div>
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className="font-semibold text-foreground truncate text-sm">{chat.title}</div>
+                        <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
                           {chat.messages?.length || 0} messages • {new Date(chat.createdAt).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -449,7 +524,7 @@ const AdminChatViewContent: React.FC = () => {
                           })}
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
               </div>

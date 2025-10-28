@@ -201,7 +201,13 @@ function LoginForm() {
               {loading ? "Signing in..." : "Continue with Google"}
             </Button>
 
-            <div className="mt-6 text-center text-sm">
+            <div className="mt-4 text-center text-sm">
+              <Link href="/auth/forgot-password" className="text-primary hover:underline">
+                Forgot your password?
+              </Link>
+            </div>
+
+            <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link href="/auth/register" className="text-primary hover:underline">
                 Register here

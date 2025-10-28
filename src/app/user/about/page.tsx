@@ -18,6 +18,7 @@ import {
   ShieldUser
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import TeamGrid from '@/components/team/TeamGrid'
 
 export default function HomePage() {
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -354,6 +355,9 @@ export default function HomePage() {
         >
           
         </motion.section>
+
+  {/* Team Section */}
+  <TeamGrid compact />
       </div>
 
       {/* Footer */}

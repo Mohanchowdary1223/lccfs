@@ -100,6 +100,56 @@ export async function POST(request: NextRequest) {
     // Pre-validate user question for legal compliance relevance (only if no file)
     if (body.message && !body.tempFileData && !body.fileId) {
       const messageLower = body.message.toLowerCase()
+
+      // Allow friendly greetings and short small-talk locally with canned replies
+      const greetings = [
+        'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'goodnight', 'gm', 'greetings'
+      ]
+      const thanks = ['thank you', 'thanks', 'thx', 'ty']
+      const farewell = ['bye', 'goodbye', 'see you', 'see ya']
+
+      const isGreeting = greetings.some(g => messageLower === g || messageLower.startsWith(g + ' ') || messageLower.includes(g))
+      const isThanks = thanks.some(t => messageLower === t || messageLower.includes(t))
+      const isFarewell = farewell.some(f => messageLower === f || messageLower.includes(f))
+
+      if (isGreeting || isThanks || isFarewell) {
+        // Store the user message and return a simple canned bot response (no AI call)
+        messages.push(userMsg)
+        const cannedReplies: string[] = []
+        if (isGreeting) cannedReplies.push("Hi — I'm your Legal Compliance Assistant for Startups. How can I help you with your business's legal needs today?")
+        if (isThanks) cannedReplies.push("You're welcome — happy to help. If you have any legal compliance questions for your startup, ask away!")
+        if (isFarewell) cannedReplies.push("Goodbye — feel free to come back when you have questions about startup legal compliance.")
+
+        const replyMsg = {
+          id: (Date.now() + 1).toString(),
+          text: cannedReplies.join(' '),
+          sender: 'bot',
+          timestamp: new Date(),
+        }
+        messages.push(replyMsg)
+
+        // Save the chat and return early
+        let result
+        if (chatId) {
+          await db.collection('chats').updateOne(
+            { _id: new ObjectId(chatId), userId },
+            { $set: { messages, title, updatedAt: new Date(), userId, userName } }
+          )
+          chat = await db.collection('chats').findOne({ _id: new ObjectId(chatId), userId })
+        } else {
+          result = await db.collection('chats').insertOne({
+            userId,
+            userName,
+            title,
+            messages,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          chat = await db.collection('chats').findOne({ _id: result.insertedId })
+        }
+        return NextResponse.json({ chat })
+      }
+
       const legalKeywords = [
         'legal', 'law', 'compliance', 'contract', 'agreement', 'terms', 'policy', 'regulation',
         'incorporation', 'llc', 'corporation', 'company', 'business', 'startup', 'intellectual property',
@@ -110,7 +160,7 @@ export async function POST(request: NextRequest) {
         'compliance', 'regulation', 'regulatory', 'formation', 'entity', 'partnership', 'sole proprietorship'
       ]
       
-      const isLegalQuestion = legalKeywords.some(keyword => 
+      const isLegalQuestion = legalKeywords.some(keyword =>
         messageLower.includes(keyword)
       ) || messageLower.includes('legal') || messageLower.includes('business')
       

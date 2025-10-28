@@ -496,25 +496,41 @@ const LegalComplianceChatBotContent: React.FC = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        {/* Mobile Sidebar Overlay */}
+        {isMobile && openMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 top-16 bg-black/20 backdrop-blur-sm z-30"
+            onClick={() => setOpenMobile(false)}
+          />
+        )}
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="fixed top-16 bottom-0 right-0 z-40 flex flex-col bg-background"
           style={{
-            left: isMobile ? (openMobile ? '280px' : '0') : (open ? '280px' : '64px'),
-            transition: 'left 0.2s ease-in-out',
+            left: isMobile ? '0' : (open ? '280px' : '64px'),
+            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             borderLeft: isMobile ? 'none' : open ? '1px solid hsl(var(--border))' : '1px solid hsl(var(--border))'
           }}
         >
-          {/* Mobile Sidebar Trigger */}
+          {/* Mobile Sidebar Trigger - Only show when sidebar is closed */}
           {isMobile && !openMobile && (
-            <div className="absolute top-4 left-4 z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="fixed top-20 left-4 z-50"
+            >
               <SidebarTrigger 
-                className="md:hidden bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg rounded-md p-2"
-                aria-label="Open sidebar"
+                className="md:hidden bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-95 border-2 border-primary-foreground/20"
+                aria-label="Open chat history"
               />
-            </div>
+            </motion.div>
           )}
           <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
             <div className="flex flex-col items-center w-full px-2 sm:px-4 h-full">

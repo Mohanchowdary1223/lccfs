@@ -97,12 +97,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08 }}
-      className={`flex w-full ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+      className={`flex w-full items-start ${message.sender === "user" ? "justify-end" : "justify-start"}`}
     >
-      <div className={`flex max-w-xs ${
+      <div className={`flex w-full ${
         message.sender === "user"
-          ? "flex-row-reverse lg:max-w-md xl:max-w-lg"
-          : "flex-row lg:max-w-md xl:max-w-lg"
+          ? "flex-row-reverse"
+          : "flex-row"
       }`}>
         <motion.div
           initial={{ scale: 0 }}
@@ -153,12 +153,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: index * 0.08 + 0.3 }}
-          className={`rounded-lg px-4 py-3 relative ${
-            message.sender === "user"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted dark:bg-gray-800 text-muted-foreground dark:text-gray-200"
-          }`}
+          className={`rounded-2xl px-4 py-3 relative shadow-sm ${
+              message.sender === "user"
+                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground"
+                : "bg-white border border-gray-100 dark:bg-gray-800 dark:border-gray-700 text-muted-foreground dark:text-gray-200"
+            } max-w-[85%] sm:max-w-[72%] md:max-w-[60%] lg:max-w-2xl`}
         >
+            {/* subtle message tail */}
+            {message.sender === "user" ? (
+              <div className="absolute -right-2 top-4 w-3 h-3 transform rotate-45 rounded-sm shadow-sm bg-gradient-to-r from-primary to-primary/80" />
+            ) : (
+              <div className="absolute -left-2 top-4 w-3 h-3 transform rotate-45 rounded-sm border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800" />
+            )}
           {/* Editing */}
           {message.sender === "user" && isEditing ? (
             <div>
